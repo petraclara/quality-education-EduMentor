@@ -1,0 +1,155 @@
+# 🎓 Student–Mentor Matching System
+
+**SDG 4: Quality Education**
+
+A Go-based backend system that helps students find suitable mentors by matching their learning needs with mentor expertise and availability. The system uses a transparent, rule-based scoring algorithm to recommend the most relevant mentors, promoting equitable access to mentorship and quality education.
+
+---
+
+## 📌 Problem Statement
+
+Many students lack access to structured mentorship due to limited professional networks, insufficient institutional support, and the absence of scalable digital tools. As a result, students struggle to make informed academic and career decisions, while willing mentors remain underutilized.
+
+This project addresses this gap by providing a simple, data-driven system that connects students to mentors based on interests, skills, and availability.
+
+---
+
+## 🎯 Project Objectives
+
+* Enable students to easily find relevant mentors
+* Use transparent and explainable matching logic
+* Promote equitable access to educational guidance
+* Demonstrate clean backend engineering using Go
+
+---
+
+## 🚀 Features
+
+* Student profile creation (interests, level, availability)
+* Mentor profile management (expertise, experience, availability)
+* Rule-based mentor matching algorithm
+* Ranked mentor recommendations with match scores
+* Explainable results showing why a mentor was recommended
+* Command-line interface (CLI) or REST API
+* Input validation and error handling
+* Lightweight data storage using JSON or CSV
+* Modular and clean project architecture
+
+---
+
+## 🧠 How It Works
+
+1. Students provide their learning interests and availability
+2. Mentors are registered with their expertise and available time slots
+3. The system compares:
+
+   * Skill and interest overlap
+   * Availability compatibility
+   * Experience level alignment
+4. Each mentor is assigned a match score
+5. Top mentor matches are returned to the student
+
+---
+
+## 🧩 Example Input
+
+```json
+{
+  "student": {
+    "name": "Alice",
+    "interests": ["Go", "Data Analysis"],
+    "availability": ["Monday", "Wednesday"]
+  }
+}
+```
+
+## ✅ Example Output
+
+```json
+{
+  "top_mentors": [
+    {
+      "name": "John",
+      "match_score": 85,
+      "reasons": ["Shared skills: Go", "Availability overlap"]
+    }
+  ]
+}
+```
+
+---
+
+## 🛠️ Tech Stack
+
+* **Language:** Go (Golang)
+* **Architecture:** Modular backend design
+* **Storage:** JSON / CSV files
+* **Interface:** CLI or REST API
+
+---
+
+## 📂 Project Structure
+
+```
+student-mentor-matching-system/
+├── cmd/
+│   └── app/
+│       └── main.go
+├── internal/
+│   ├── models/
+│   ├── services/
+│   ├── handlers/
+│   └── validators/
+├── data/
+│   ├── students.json
+│   └── mentors.json
+├── tests/
+├── go.mod
+└── README.md
+```
+
+---
+
+## 🟢 MVP Definition
+
+The project is considered complete when it includes:
+
+* Student profiles
+* Mentor profiles
+* Matching algorithm
+* Ranked recommendations
+* CLI or API interface
+* Documentation
+
+---
+
+## 🌍 SDG Alignment
+
+**SDG 4: Quality Education**
+
+This project supports inclusive and equitable quality education by improving access to mentorship, which is critical for academic success, career development, and lifelong learning.
+
+---
+
+## 📈 Future Improvements
+
+* Database integration (PostgreSQL / SQLite)
+* Authentication and user accounts
+* Web or mobile frontend
+* Advanced matching logic
+* Feedback and rating system
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+## 👤 Author
+
+**Clare Gisore**
+Software Engineering Graduate | Data & Backend Enthusiast
+
+---
