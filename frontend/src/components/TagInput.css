@@ -1,0 +1,75 @@
+.tag-input-container {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 12px;
+  transition: border-color 0.2s;
+}
+
+.tag-input-container:focus-within {
+  border-color: rgba(20, 184, 166, 0.5);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(139, 92, 246, 0.15));
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  color: #a7f3d0;
+  animation: tagPop 0.2s ease-out;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.tag-remove:hover {
+  color: #ef4444;
+}
+
+.tag-input {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 0.9rem;
+  outline: none;
+  min-width: 120px;
+  flex: 1;
+  padding: 4px 0;
+  font-family: inherit;
+}
+
+.tag-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes tagPop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

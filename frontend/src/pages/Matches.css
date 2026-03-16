@@ -1,0 +1,80 @@
+.matches-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.matches-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.filter-tab:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.filter-tab-active {
+  background: rgba(20, 184, 166, 0.15);
+  color: #5eead4;
+}
+
+.filter-count {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-tab-active .filter-count {
+  background: rgba(20, 184, 166, 0.2);
+}
+
+/* Matches Grid */
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .matches-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .matches-grid {
+    grid-template-columns: 1fr;
+  }
+  .filter-tabs {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,46 @@
+.profile-page {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  margin-bottom: 36px;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 6px 0;
+}
+
+.page-subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.section-hint {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}

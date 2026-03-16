@@ -1,0 +1,70 @@
+.availability-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: 50px repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.grid-corner {
+  /* empty cell */
+}
+
+.grid-time-label {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 4px 0;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: 50px repeat(3, 1fr);
+  gap: 4px;
+}
+
+.grid-day-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.grid-cell {
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.grid-cell:hover {
+  background: rgba(20, 184, 166, 0.15);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.grid-cell-active {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(139, 92, 246, 0.3));
+  border-color: rgba(20, 184, 166, 0.4);
+  box-shadow: 0 0 12px rgba(20, 184, 166, 0.15);
+}
+
+.grid-cell-active:hover {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.4), rgba(139, 92, 246, 0.4));
+}
