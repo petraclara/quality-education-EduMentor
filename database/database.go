@@ -9,37 +9,29 @@ import (
 
 	"github.com/petraclara/quality-education-EduMentor/models"
 	_ "modernc.org/sqlite"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// DB wraps the sql.DB connection
 type DB struct {
 	conn *sql.DB
 }
 
-// New creates a new database connection and runs migrations
 func New(dbPath string) (*DB, error) {
 	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-
-	// Enable WAL mode for better concurrent access
 	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		return nil, fmt.Errorf("failed to set WAL mode: %w", err)
 	}
-
 	db := &DB{conn: conn}
 	if err := db.migrate(); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
-
 	return db, nil
 }
 
-// Close closes the database connection
-func (db *DB) Close() error {
-	return db.conn.Close()
-}
+func (db *DB) Close() error { return db.conn.Close() }
 
 func (db *DB) migrate() error {
 	queries := []string{
@@ -48,7 +40,7 @@ func (db *DB) migrate() error {
 			name TEXT NOT NULL,
 			email TEXT UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'mentee',
+			role TEXT NOT NULL DEFAULT 'learner',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS profiles (
@@ -57,20 +49,39 @@ func (db *DB) migrate() error {
 			bio TEXT DEFAULT '',
 			skills TEXT DEFAULT '[]',
 			interests TEXT DEFAULT '[]',
+			level TEXT DEFAULT '',
+			goal TEXT DEFAULT '',
 			availability TEXT DEFAULT '[]',
 			avatar_url TEXT DEFAULT '',
+			max_mentees INTEGER DEFAULT 5,
+			rating REAL DEFAULT 0,
+			rating_count INTEGER DEFAULT 0,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
-		`CREATE TABLE IF NOT EXISTS matches (
+		`CREATE TABLE IF NOT EXISTS mentorship_requests (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			learner_id INTEGER NOT NULL,
+			mentor_id INTEGER NOT NULL,
+			help_with TEXT NOT NULL,
+			goal TEXT DEFAULT '',
+			message TEXT DEFAULT '',
+			status TEXT DEFAULT 'pending',
+			decline_reason TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (learner_id) REFERENCES users(id) ON DELETE CASCADE,
+			FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS bookings (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			mentor_id INTEGER NOT NULL,
 			mentee_id INTEGER NOT NULL,
-			score REAL DEFAULT 0,
-			status TEXT DEFAULT 'pending',
+			date TEXT NOT NULL,
+			time_slot TEXT NOT NULL,
+			status TEXT DEFAULT 'upcoming',
+			note TEXT DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE,
-			FOREIGN KEY (mentee_id) REFERENCES users(id) ON DELETE CASCADE,
-			UNIQUE(mentor_id, mentee_id)
+			FOREIGN KEY (mentee_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS sessions (
 			token TEXT PRIMARY KEY,
@@ -79,7 +90,6 @@ func (db *DB) migrate() error {
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 	}
-
 	for _, q := range queries {
 		if _, err := db.conn.Exec(q); err != nil {
 			return fmt.Errorf("migration failed: %w\nQuery: %s", err, q)
@@ -88,9 +98,117 @@ func (db *DB) migrate() error {
 	return nil
 }
 
+// ==================== Seed Data ====================
+
+func (db *DB) SeedDemoData() error {
+	var count int
+	db.conn.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'mentor'").Scan(&count)
+	if count > 0 {
+		return nil
+	}
+
+	mentors := []struct {
+		Name         string
+		Email        string
+		Bio          string
+		Skills       []string
+		Interests    []string
+		Level        string
+		Availability []string
+		Rating       float64
+		RatingCount  int
+	}{
+		{
+			Name: "Dr. Amara Okonkwo", Email: "amara@edumentor.io",
+			Bio:   "Senior software engineer with 12 years of experience in distributed systems. Previously led engineering teams at major tech companies. Passionate about helping the next generation of engineers grow.",
+			Skills: []string{"Go", "Python", "Kubernetes", "AWS", "System Design"},
+			Interests: []string{"Cloud Computing", "Open Source", "Tech Leadership"},
+			Level: "beginner", Availability: []string{"monday-morning", "wednesday-morning", "friday-morning"},
+			Rating: 4.9, RatingCount: 47,
+		},
+		{
+			Name: "Raj Patel", Email: "raj@edumentor.io",
+			Bio:   "Full-stack developer and educator specializing in modern web technologies. I run workshops on React and Node.js. My goal is to make complex concepts simple and accessible.",
+			Skills: []string{"React", "JavaScript", "TypeScript", "Node.js", "CSS"},
+			Interests: []string{"Web Development", "UI Design", "Teaching"},
+			Level: "beginner", Availability: []string{"tuesday-morning", "thursday-morning", "saturday-morning"},
+			Rating: 4.7, RatingCount: 35,
+		},
+		{
+			Name: "Lin Wei Chen", Email: "lin@edumentor.io",
+			Bio:   "Data scientist at a leading AI research lab. PhD in Machine Learning from MIT. I love breaking down complex ML concepts and helping students build real-world data pipelines.",
+			Skills: []string{"Python", "Machine Learning", "TensorFlow", "Data Science", "SQL"},
+			Interests: []string{"Artificial Intelligence", "Deep Learning", "Data Visualization"},
+			Level: "intermediate", Availability: []string{"monday-evening", "wednesday-evening", "friday-afternoon"},
+			Rating: 4.8, RatingCount: 52,
+		},
+		{
+			Name: "Marcus Thompson", Email: "marcus@edumentor.io",
+			Bio:   "DevOps engineer and infrastructure architect. Extensive experience in CI/CD pipelines, container orchestration, and site reliability. Mentor at several coding bootcamps.",
+			Skills: []string{"Docker", "Kubernetes", "Terraform", "Linux", "AWS", "Go"},
+			Interests: []string{"Infrastructure", "Automation", "DevOps"},
+			Level: "intermediate", Availability: []string{"tuesday-evening", "thursday-afternoon", "saturday-afternoon"},
+			Rating: 4.6, RatingCount: 28,
+		},
+		{
+			Name: "Sofia Rodriguez", Email: "sofia@edumentor.io",
+			Bio:   "UX/UI designer turned product manager. 8 years creating user-centered digital experiences. I help aspiring designers build portfolios and develop design thinking skills.",
+			Skills: []string{"UI Design", "UX Research", "Figma", "Prototyping", "CSS"},
+			Interests: []string{"Product Design", "User Research", "Design Thinking"},
+			Level: "beginner", Availability: []string{"monday-morning", "wednesday-afternoon", "friday-morning"},
+			Rating: 4.8, RatingCount: 41,
+		},
+		{
+			Name: "Dr. Eleanor Hughes", Email: "eleanor@edumentor.io",
+			Bio:   "Professor of Computer Science with 20 years of academic and industry experience. Specializing in algorithms and cybersecurity. Published 50+ peer-reviewed papers.",
+			Skills: []string{"Algorithms", "Cybersecurity", "Java", "C++", "Cryptography"},
+			Interests: []string{"Computer Science Education", "Security Research"},
+			Level: "advanced", Availability: []string{"tuesday-morning", "wednesday-morning", "friday-afternoon"},
+			Rating: 4.5, RatingCount: 19,
+		},
+		{
+			Name: "David Kimani", Email: "david@edumentor.io",
+			Bio:   "Mobile app developer with experience shipping iOS and Android apps to millions of users. Former lead at a fintech startup. I love helping people build their first apps.",
+			Skills: []string{"Swift", "Kotlin", "React Native", "Flutter", "Firebase"},
+			Interests: []string{"Mobile Apps", "Startup Culture", "Fintech"},
+			Level: "beginner", Availability: []string{"monday-evening", "thursday-evening", "saturday-morning"},
+			Rating: 4.7, RatingCount: 33,
+		},
+		{
+			Name: "Yusuf Al-Rashid", Email: "yusuf@edumentor.io",
+			Bio:   "Backend engineer specializing in high-performance APIs and microservices. Expert in Go and Rust. I enjoy pair programming and code reviews to accelerate learning.",
+			Skills: []string{"Go", "Rust", "PostgreSQL", "Redis", "Microservices", "API Design"},
+			Interests: []string{"Systems Programming", "Performance", "Open Source"},
+			Level: "advanced", Availability: []string{"monday-morning", "tuesday-evening", "wednesday-morning", "thursday-morning"},
+			Rating: 4.9, RatingCount: 38,
+		},
+	}
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte("mentor123"), bcrypt.DefaultCost)
+	for _, m := range mentors {
+		result, err := db.conn.Exec(
+			"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'mentor')",
+			m.Name, m.Email, string(hash),
+		)
+		if err != nil {
+			continue
+		}
+		id, _ := result.LastInsertId()
+		skillsJSON, _ := json.Marshal(m.Skills)
+		interestsJSON, _ := json.Marshal(m.Interests)
+		availJSON, _ := json.Marshal(m.Availability)
+		db.conn.Exec(
+			`INSERT INTO profiles (user_id, bio, skills, interests, level, availability, rating, rating_count) 
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, m.Bio, string(skillsJSON), string(interestsJSON), m.Level, string(availJSON), m.Rating, m.RatingCount,
+		)
+	}
+	fmt.Printf("✅ Seeded %d demo mentors\n", len(mentors))
+	return nil
+}
+
 // ==================== User Operations ====================
 
-// CreateUser inserts a new user and creates an empty profile
 func (db *DB) CreateUser(name, email, passwordHash, role string) (*models.User, error) {
 	result, err := db.conn.Exec(
 		"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
@@ -102,294 +220,311 @@ func (db *DB) CreateUser(name, email, passwordHash, role string) (*models.User, 
 		}
 		return nil, err
 	}
-
 	id, _ := result.LastInsertId()
-	user := &models.User{
-		ID:    int(id),
-		Name:  name,
-		Email: email,
-		Role:  role,
-	}
-
-	// Create empty profile
-	_, err = db.conn.Exec(
-		"INSERT INTO profiles (user_id) VALUES (?)", id,
-	)
+	user := &models.User{ID: int(id), Name: name, Email: email, Role: role}
+	_, err = db.conn.Exec("INSERT INTO profiles (user_id) VALUES (?)", id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
-
 	return user, nil
 }
 
-// GetUserByEmail retrieves a user by email
 func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	user := &models.User{}
 	err := db.conn.QueryRow(
-		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = ?",
-		email,
+		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = ?", email,
 	).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	return user, nil
 }
 
-// GetUserByID retrieves a user by ID
 func (db *DB) GetUserByID(id int) (*models.User, error) {
 	user := &models.User{}
 	err := db.conn.QueryRow(
-		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE id = ?",
-		id,
+		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE id = ?", id,
 	).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	return user, nil
 }
 
 // ==================== Profile Operations ====================
 
-// GetProfile retrieves a user's profile
 func (db *DB) GetProfile(userID int) (*models.Profile, error) {
 	profile := &models.Profile{}
 	var skillsJSON, interestsJSON, availabilityJSON string
-
 	err := db.conn.QueryRow(
-		"SELECT id, user_id, bio, skills, interests, availability, avatar_url FROM profiles WHERE user_id = ?",
-		userID,
-	).Scan(&profile.ID, &profile.UserID, &profile.Bio, &skillsJSON, &interestsJSON, &availabilityJSON, &profile.AvatarURL)
-	if err != nil {
-		return nil, err
-	}
+		`SELECT id, user_id, bio, skills, interests, level, goal, availability, avatar_url, max_mentees, rating, rating_count 
+		 FROM profiles WHERE user_id = ?`, userID,
+	).Scan(&profile.ID, &profile.UserID, &profile.Bio, &skillsJSON, &interestsJSON,
+		&profile.Level, &profile.Goal, &availabilityJSON, &profile.AvatarURL,
+		&profile.MaxMentees, &profile.Rating, &profile.RatingCount)
+	if err != nil { return nil, err }
 
 	json.Unmarshal([]byte(skillsJSON), &profile.Skills)
 	json.Unmarshal([]byte(interestsJSON), &profile.Interests)
 	json.Unmarshal([]byte(availabilityJSON), &profile.Availability)
-
-	if profile.Skills == nil {
-		profile.Skills = []string{}
-	}
-	if profile.Interests == nil {
-		profile.Interests = []string{}
-	}
-	if profile.Availability == nil {
-		profile.Availability = []string{}
-	}
-
+	if profile.Skills == nil { profile.Skills = []string{} }
+	if profile.Interests == nil { profile.Interests = []string{} }
+	if profile.Availability == nil { profile.Availability = []string{} }
 	return profile, nil
 }
 
-// UpdateProfile updates a user's profile
 func (db *DB) UpdateProfile(userID int, req models.ProfileUpdateRequest) error {
 	skillsJSON, _ := json.Marshal(req.Skills)
 	interestsJSON, _ := json.Marshal(req.Interests)
 	availabilityJSON, _ := json.Marshal(req.Availability)
-
 	_, err := db.conn.Exec(
-		"UPDATE profiles SET bio = ?, skills = ?, interests = ?, availability = ? WHERE user_id = ?",
-		req.Bio, string(skillsJSON), string(interestsJSON), string(availabilityJSON), userID,
+		`UPDATE profiles SET bio = ?, skills = ?, interests = ?, level = ?, goal = ?, 
+		 availability = ?, max_mentees = ? WHERE user_id = ?`,
+		req.Bio, string(skillsJSON), string(interestsJSON), req.Level, req.Goal,
+		string(availabilityJSON), req.MaxMentees, userID,
 	)
 	return err
 }
 
-// GetAllProfiles retrieves all profiles with user info (for matching)
-func (db *DB) GetAllProfiles() ([]struct {
-	User    models.User
-	Profile models.Profile
-}, error) {
+// ==================== Mentor Operations ====================
+
+func (db *DB) GetMentors() ([]models.MentorCard, error) {
 	rows, err := db.conn.Query(`
-		SELECT u.id, u.name, u.email, u.role, u.created_at,
-		       p.id, p.user_id, p.bio, p.skills, p.interests, p.availability, p.avatar_url
-		FROM users u
-		JOIN profiles p ON u.id = p.user_id
+		SELECT u.id, u.name, u.role, p.bio, p.skills, p.interests, p.level, p.availability, p.avatar_url, p.rating, p.rating_count
+		FROM users u JOIN profiles p ON u.id = p.user_id
+		WHERE u.role = 'mentor' ORDER BY p.rating DESC
 	`)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	defer rows.Close()
 
-	var results []struct {
-		User    models.User
-		Profile models.Profile
-	}
-
+	var mentors []models.MentorCard
 	for rows.Next() {
-		var u models.User
-		var p models.Profile
-		var skillsJSON, interestsJSON, availabilityJSON string
-
-		err := rows.Scan(
-			&u.ID, &u.Name, &u.Email, &u.Role, &u.CreatedAt,
-			&p.ID, &p.UserID, &p.Bio, &skillsJSON, &interestsJSON, &availabilityJSON, &p.AvatarURL,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		json.Unmarshal([]byte(skillsJSON), &p.Skills)
-		json.Unmarshal([]byte(interestsJSON), &p.Interests)
-		json.Unmarshal([]byte(availabilityJSON), &p.Availability)
-
-		if p.Skills == nil {
-			p.Skills = []string{}
-		}
-		if p.Interests == nil {
-			p.Interests = []string{}
-		}
-		if p.Availability == nil {
-			p.Availability = []string{}
-		}
-
-		results = append(results, struct {
-			User    models.User
-			Profile models.Profile
-		}{u, p})
-	}
-	return results, nil
-}
-
-// ==================== Match Operations ====================
-
-// CreateMatch inserts a new match
-func (db *DB) CreateMatch(mentorID, menteeID int, score float64) (*models.Match, error) {
-	result, err := db.conn.Exec(
-		"INSERT OR REPLACE INTO matches (mentor_id, mentee_id, score, status) VALUES (?, ?, ?, 'pending')",
-		mentorID, menteeID, score,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	id, _ := result.LastInsertId()
-	return &models.Match{
-		ID:       int(id),
-		MentorID: mentorID,
-		MenteeID: menteeID,
-		Score:    score,
-		Status:   "pending",
-	}, nil
-}
-
-// UpdateMatchStatus updates the status of a match
-func (db *DB) UpdateMatchStatus(matchID int, status string) error {
-	_, err := db.conn.Exec(
-		"UPDATE matches SET status = ? WHERE id = ?",
-		status, matchID,
-	)
-	return err
-}
-
-// GetMatchesByUser retrieves all matches for a user (as mentor or mentee) with user details
-func (db *DB) GetMatchesByUser(userID int) ([]models.MatchWithUser, error) {
-	rows, err := db.conn.Query(`
-		SELECT m.id, m.mentor_id, m.mentee_id, m.score, m.status, m.created_at,
-		       u.name, u.email, u.role,
-		       p.bio, p.skills, p.interests
-		FROM matches m
-		JOIN users u ON (CASE WHEN m.mentor_id = ? THEN m.mentee_id ELSE m.mentor_id END) = u.id
-		JOIN profiles p ON u.id = p.user_id
-		WHERE m.mentor_id = ? OR m.mentee_id = ?
-		ORDER BY m.score DESC
-	`, userID, userID, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var matches []models.MatchWithUser
-	for rows.Next() {
-		var m models.MatchWithUser
-		var skillsJSON, interestsJSON string
-
-		err := rows.Scan(
-			&m.ID, &m.MentorID, &m.MenteeID, &m.Score, &m.Status, &m.CreatedAt,
-			&m.UserName, &m.UserEmail, &m.UserRole,
-			&m.Bio, &skillsJSON, &interestsJSON,
-		)
-		if err != nil {
-			return nil, err
-		}
-
+		var m models.MentorCard
+		var skillsJSON, interestsJSON, availJSON string
+		err := rows.Scan(&m.ID, &m.Name, &m.Role, &m.Bio, &skillsJSON, &interestsJSON, &m.Level, &availJSON, &m.AvatarURL, &m.Rating, &m.RatingCount)
+		if err != nil { return nil, err }
 		json.Unmarshal([]byte(skillsJSON), &m.Skills)
 		json.Unmarshal([]byte(interestsJSON), &m.Interests)
-
-		if m.Skills == nil {
-			m.Skills = []string{}
-		}
-		if m.Interests == nil {
-			m.Interests = []string{}
-		}
-
-		matches = append(matches, m)
+		json.Unmarshal([]byte(availJSON), &m.Availability)
+		if m.Skills == nil { m.Skills = []string{} }
+		if m.Interests == nil { m.Interests = []string{} }
+		if m.Availability == nil { m.Availability = []string{} }
+		mentors = append(mentors, m)
 	}
-	return matches, nil
+	return mentors, nil
 }
 
-// GetMatchByID retrieves a match by ID
-func (db *DB) GetMatchByID(id int) (*models.Match, error) {
-	m := &models.Match{}
-	err := db.conn.QueryRow(
-		"SELECT id, mentor_id, mentee_id, score, status, created_at FROM matches WHERE id = ?",
-		id,
-	).Scan(&m.ID, &m.MentorID, &m.MenteeID, &m.Score, &m.Status, &m.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
+func (db *DB) GetMentorByID(id int) (*models.MentorCard, error) {
+	m := &models.MentorCard{}
+	var skillsJSON, interestsJSON, availJSON string
+	err := db.conn.QueryRow(`
+		SELECT u.id, u.name, u.role, p.bio, p.skills, p.interests, p.level, p.availability, p.avatar_url, p.rating, p.rating_count
+		FROM users u JOIN profiles p ON u.id = p.user_id WHERE u.id = ?
+	`, id).Scan(&m.ID, &m.Name, &m.Role, &m.Bio, &skillsJSON, &interestsJSON, &m.Level, &availJSON, &m.AvatarURL, &m.Rating, &m.RatingCount)
+	if err != nil { return nil, err }
+	json.Unmarshal([]byte(skillsJSON), &m.Skills)
+	json.Unmarshal([]byte(interestsJSON), &m.Interests)
+	json.Unmarshal([]byte(availJSON), &m.Availability)
+	if m.Skills == nil { m.Skills = []string{} }
+	if m.Interests == nil { m.Interests = []string{} }
+	if m.Availability == nil { m.Availability = []string{} }
 	return m, nil
 }
 
-// GetDashboardStats retrieves match statistics for a user
-func (db *DB) GetDashboardStats(userID int) (*models.DashboardStats, error) {
-	stats := &models.DashboardStats{}
+// GetMatchedMentors returns mentors ranked by compatibility with a learner's interests
+func (db *DB) GetMatchedMentors(learnerID int) ([]models.MentorCard, error) {
+	learnerProfile, err := db.GetProfile(learnerID)
+	if err != nil { return nil, err }
 
-	err := db.conn.QueryRow(`
-		SELECT
-			COUNT(*) as total,
-			SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-			SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted,
-			SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-		FROM matches
-		WHERE mentor_id = ? OR mentee_id = ?
-	`, userID, userID).Scan(&stats.TotalMatches, &stats.PendingMatches, &stats.AcceptedMatches, &stats.RejectedMatches)
-	if err != nil {
-		return nil, err
+	mentors, err := db.GetMentors()
+	if err != nil { return nil, err }
+
+	// Score each mentor based on interest/skill overlap
+	for i := range mentors {
+		score := 0.0
+		score += jaccardSimilarity(learnerProfile.Interests, mentors[i].Skills) * 0.5
+		score += jaccardSimilarity(learnerProfile.Interests, mentors[i].Interests) * 0.3
+		// level match bonus
+		if learnerProfile.Level != "" && mentors[i].Level == learnerProfile.Level {
+			score += 0.2
+		}
+		mentors[i].MatchScore = score
 	}
 
-	return stats, nil
+	// Sort by match score descending
+	for i := 0; i < len(mentors); i++ {
+		for j := i + 1; j < len(mentors); j++ {
+			if mentors[j].MatchScore > mentors[i].MatchScore {
+				mentors[i], mentors[j] = mentors[j], mentors[i]
+			}
+		}
+	}
+	return mentors, nil
+}
+
+func jaccardSimilarity(a, b []string) float64 {
+	if len(a) == 0 && len(b) == 0 { return 0 }
+	setA := make(map[string]bool)
+	for _, v := range a { setA[strings.ToLower(strings.TrimSpace(v))] = true }
+	setB := make(map[string]bool)
+	for _, v := range b { setB[strings.ToLower(strings.TrimSpace(v))] = true }
+	intersection := 0
+	for k := range setA { if setB[k] { intersection++ } }
+	union := len(setA)
+	for k := range setB { if !setA[k] { union++ } }
+	if union == 0 { return 0 }
+	return float64(intersection) / float64(union)
+}
+
+// ==================== Mentorship Request Operations ====================
+
+func (db *DB) CreateMentorshipRequest(learnerID, mentorID int, helpWith, goal, message string) (*models.MentorshipRequest, error) {
+	result, err := db.conn.Exec(
+		"INSERT INTO mentorship_requests (learner_id, mentor_id, help_with, goal, message) VALUES (?, ?, ?, ?, ?)",
+		learnerID, mentorID, helpWith, goal, message,
+	)
+	if err != nil { return nil, err }
+	id, _ := result.LastInsertId()
+	return &models.MentorshipRequest{
+		ID: int(id), LearnerID: learnerID, MentorID: mentorID,
+		HelpWith: helpWith, Goal: goal, Message: message, Status: "pending",
+	}, nil
+}
+
+func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWithUser, error) {
+	rows, err := db.conn.Query(`
+		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.created_at,
+		       learner.name, learner.email, COALESCE(p.level, '')
+		FROM mentorship_requests r
+		JOIN users learner ON r.learner_id = learner.id
+		LEFT JOIN profiles p ON learner.id = p.user_id
+		WHERE r.mentor_id = ?
+		ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END, r.created_at DESC
+	`, mentorID)
+	if err != nil { return nil, err }
+	defer rows.Close()
+
+	var requests []models.MentorshipRequestWithUser
+	for rows.Next() {
+		var r models.MentorshipRequestWithUser
+		err := rows.Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message,
+			&r.Status, &r.DeclineReason, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel)
+		if err != nil { return nil, err }
+		requests = append(requests, r)
+	}
+	if requests == nil { requests = []models.MentorshipRequestWithUser{} }
+	return requests, nil
+}
+
+func (db *DB) GetRequestsByLearner(learnerID int) ([]models.MentorshipRequestWithUser, error) {
+	rows, err := db.conn.Query(`
+		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.created_at,
+		       '', '', '', mentor.name
+		FROM mentorship_requests r
+		JOIN users mentor ON r.mentor_id = mentor.id
+		WHERE r.learner_id = ?
+		ORDER BY r.created_at DESC
+	`, learnerID)
+	if err != nil { return nil, err }
+	defer rows.Close()
+
+	var requests []models.MentorshipRequestWithUser
+	for rows.Next() {
+		var r models.MentorshipRequestWithUser
+		err := rows.Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message,
+			&r.Status, &r.DeclineReason, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel, &r.MentorName)
+		if err != nil { return nil, err }
+		requests = append(requests, r)
+	}
+	if requests == nil { requests = []models.MentorshipRequestWithUser{} }
+	return requests, nil
+}
+
+func (db *DB) GetRequestByID(id int) (*models.MentorshipRequest, error) {
+	r := &models.MentorshipRequest{}
+	err := db.conn.QueryRow(
+		"SELECT id, learner_id, mentor_id, help_with, goal, message, status, decline_reason, created_at FROM mentorship_requests WHERE id = ?", id,
+	).Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message, &r.Status, &r.DeclineReason, &r.CreatedAt)
+	if err != nil { return nil, err }
+	return r, nil
+}
+
+func (db *DB) AcceptRequest(id int) error {
+	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'accepted' WHERE id = ?", id)
+	return err
+}
+
+func (db *DB) DeclineRequest(id int, reason string) error {
+	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'declined', decline_reason = ? WHERE id = ?", reason, id)
+	return err
+}
+
+// ==================== Booking Operations ====================
+
+func (db *DB) CreateBooking(mentorID, menteeID int, date, timeSlot, note string) (*models.Booking, error) {
+	result, err := db.conn.Exec(
+		"INSERT INTO bookings (mentor_id, mentee_id, date, time_slot, note) VALUES (?, ?, ?, ?, ?)",
+		mentorID, menteeID, date, timeSlot, note,
+	)
+	if err != nil { return nil, err }
+	id, _ := result.LastInsertId()
+	return &models.Booking{ID: int(id), MentorID: mentorID, MenteeID: menteeID, Date: date, TimeSlot: timeSlot, Status: "upcoming", Note: note}, nil
+}
+
+func (db *DB) GetBookingsByUser(userID int) ([]models.BookingWithUser, error) {
+	rows, err := db.conn.Query(`
+		SELECT b.id, b.mentor_id, b.mentee_id, b.date, b.time_slot, b.status, b.note, b.created_at,
+		       mentor.name, mentee.name
+		FROM bookings b
+		JOIN users mentor ON b.mentor_id = mentor.id
+		JOIN users mentee ON b.mentee_id = mentee.id
+		WHERE b.mentor_id = ? OR b.mentee_id = ?
+		ORDER BY b.date ASC
+	`, userID, userID)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var bookings []models.BookingWithUser
+	for rows.Next() {
+		var b models.BookingWithUser
+		rows.Scan(&b.ID, &b.MentorID, &b.MenteeID, &b.Date, &b.TimeSlot, &b.Status, &b.Note, &b.CreatedAt, &b.MentorName, &b.MenteeName)
+		bookings = append(bookings, b)
+	}
+	if bookings == nil { bookings = []models.BookingWithUser{} }
+	return bookings, nil
+}
+
+func (db *DB) GetBookingsForMentorOnDate(mentorID int, date string) ([]models.Booking, error) {
+	rows, err := db.conn.Query(
+		"SELECT id, mentor_id, mentee_id, date, time_slot, status, note, created_at FROM bookings WHERE mentor_id = ? AND date = ? AND status = 'upcoming'",
+		mentorID, date,
+	)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var bookings []models.Booking
+	for rows.Next() {
+		var b models.Booking
+		rows.Scan(&b.ID, &b.MentorID, &b.MenteeID, &b.Date, &b.TimeSlot, &b.Status, &b.Note, &b.CreatedAt)
+		bookings = append(bookings, b)
+	}
+	if bookings == nil { bookings = []models.Booking{} }
+	return bookings, nil
 }
 
 // ==================== Session Operations ====================
 
-// CreateSession creates a new session
 func (db *DB) CreateSession(token string, userID int, expiresAt time.Time) error {
-	_, err := db.conn.Exec(
-		"INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
-		token, userID, expiresAt,
-	)
+	_, err := db.conn.Exec("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", token, userID, expiresAt)
 	return err
 }
 
-// GetSession retrieves a session by token
 func (db *DB) GetSession(token string) (*models.Session, error) {
 	s := &models.Session{}
-	err := db.conn.QueryRow(
-		"SELECT token, user_id, expires_at FROM sessions WHERE token = ?",
-		token,
-	).Scan(&s.Token, &s.UserID, &s.ExpiresAt)
-	if err != nil {
-		return nil, err
-	}
+	err := db.conn.QueryRow("SELECT token, user_id, expires_at FROM sessions WHERE token = ?", token).Scan(&s.Token, &s.UserID, &s.ExpiresAt)
+	if err != nil { return nil, err }
 	return s, nil
 }
 
-// DeleteSession removes a session
 func (db *DB) DeleteSession(token string) error {
 	_, err := db.conn.Exec("DELETE FROM sessions WHERE token = ?", token)
 	return err
 }
 
-// CleanExpiredSessions removes expired sessions
 func (db *DB) CleanExpiredSessions() error {
 	_, err := db.conn.Exec("DELETE FROM sessions WHERE expires_at < ?", time.Now())
 	return err

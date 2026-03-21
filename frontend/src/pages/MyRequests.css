@@ -1,0 +1,16 @@
+.myr { display: flex; flex-direction: column; gap: 16px; }
+.myr-title { font-size: 1.5rem; font-weight: 800; }
+.myr-list { display: flex; flex-direction: column; gap: 12px; }
+.myr-card { }
+.myr-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.myr-header strong { font-size: 1rem; }
+.myr-status { font-size: 0.82rem; font-weight: 600; }
+.myr-pending { color: var(--warning); }
+.myr-accepted { color: var(--success); }
+.myr-declined { color: var(--danger); }
+.myr-help { font-size: 0.92rem; color: var(--text-secondary); }
+.myr-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+.myr-reason {
+  margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm);
+  background: var(--danger-light); color: var(--danger); font-size: 0.85rem;
+}

@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import './Auth.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login({ email, password }, false);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -27,54 +27,23 @@ export default function Login() {
 
   return (
     <div className="auth-page">
+      <ToastContainer />
       <div className="auth-card">
-        <div className="auth-header">
-          <span className="auth-icon">🎓</span>
-          <h1 className="auth-title">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to continue your learning journey</p>
-        </div>
-
-        {error && <div className="auth-error">{error}</div>}
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="auth-sub">Login to your EduMentor account</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input
-              id="login-email"
-              type="email"
-              className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              className="form-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <button
-            id="login-submit"
-            type="submit"
-            className="btn btn-primary btn-full"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
+          <input id="login-email" className="form-input" type="email" placeholder="Email"
+            value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input id="login-password" className="form-input" type="password" placeholder="Password"
+            value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <button id="login-submit" type="submit" className="btn btn-primary btn-large btn-full" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <p className="auth-footer">
-          Don't have an account? <Link to="/register" className="auth-link">Create one</Link>
+          Don't have an account? <Link to="/register">Sign Up</Link>
         </p>
       </div>
     </div>

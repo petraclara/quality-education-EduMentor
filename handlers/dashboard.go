@@ -16,7 +16,7 @@ func NewDashboardHandler(db *database.DB) *DashboardHandler {
 	return &DashboardHandler{db: db}
 }
 
-// GetDashboard returns dashboard stats and recent matches
+// GetDashboard returns role-specific dashboard data
 func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -24,43 +24,66 @@ func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) 
 	}
 
 	userID := middleware.GetUserID(r)
-
-	stats, err := h.db.GetDashboardStats(userID)
-	if err != nil {
-		jsonError(w, "failed to fetch stats", http.StatusInternalServerError)
-		return
-	}
-
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
 		jsonError(w, "user not found", http.StatusNotFound)
 		return
 	}
 
-	profile, err := h.db.GetProfile(userID)
-	if err != nil {
-		jsonError(w, "profile not found", http.StatusNotFound)
-		return
-	}
+	profile, _ := h.db.GetProfile(userID)
 
-	matches, err := h.db.GetMatchesByUser(userID)
-	if err != nil {
-		matches = []models.MatchWithUser{}
-	}
+	if user.Role == "mentor" {
+		// Mentor dashboard: incoming requests
+		requests, err := h.db.GetRequestsForMentor(userID)
+		if err != nil {
+			jsonError(w, "failed to fetch requests", http.StatusInternalServerError)
+			return
+		}
 
-	// Limit to 5 most recent
-	recentMatches := matches
-	if len(recentMatches) > 5 {
-		recentMatches = recentMatches[:5]
-	}
+		pending := 0
+		accepted := 0
+		for _, req := range requests {
+			if req.Status == "pending" {
+				pending++
+			} else if req.Status == "accepted" {
+				accepted++
+			}
+		}
 
-	jsonResponse(w, http.StatusOK, models.APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"user":           user,
-			"profile":        profile,
-			"stats":          stats,
-			"recent_matches": recentMatches,
-		},
-	})
+		jsonResponse(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"role":             "mentor",
+				"user":             user,
+				"profile":          profile,
+				"requests":         requests,
+				"pending_count":    pending,
+				"accepted_count":   accepted,
+				"total_requests":   len(requests),
+			},
+		})
+	} else {
+		// Learner dashboard: matched mentors + request statuses
+		mentors, err := h.db.GetMatchedMentors(userID)
+		if err != nil {
+			jsonError(w, "failed to fetch mentors", http.StatusInternalServerError)
+			return
+		}
+
+		requests, err := h.db.GetRequestsByLearner(userID)
+		if err != nil {
+			requests = []models.MentorshipRequestWithUser{}
+		}
+
+		jsonResponse(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"role":     "learner",
+				"user":     user,
+				"profile":  profile,
+				"mentors":  mentors,
+				"requests": requests,
+			},
+		})
+	}
 }

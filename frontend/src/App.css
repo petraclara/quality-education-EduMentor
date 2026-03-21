@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ==================== CSS Reset & Design System ==================== */
 *,
 *::before,
 *::after {
@@ -10,55 +9,46 @@
 }
 
 :root {
-  --bg-primary: #0a0a1a;
-  --bg-secondary: #0f0f23;
-  --bg-card: rgba(255, 255, 255, 0.03);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(20, 184, 166, 0.3);
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.4);
-  --accent-teal: #14b8a6;
-  --accent-purple: #8b5cf6;
-  --accent-amber: #f59e0b;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg: #fafbfc;
+  --bg-card: #ffffff;
+  --bg-muted: #f3f4f6;
+  --border: #e5e7eb;
+  --border-hover: #14b8a6;
+  --text: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --primary: #14b8a6;
+  --primary-dark: #0d9488;
+  --primary-light: #ccfbf1;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --purple: #8b5cf6;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+  --radius: 12px;
+  --radius-sm: 8px;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--font-family);
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Background gradient effect */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(ellipse at 20% 50%, rgba(20, 184, 166, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(245, 158, 11, 0.02) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-#root {
-  position: relative;
-  z-index: 1;
+::selection {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 /* ==================== Buttons ==================== */
@@ -69,110 +59,75 @@ body::before {
   gap: 8px;
   padding: 10px 20px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 600;
-  font-family: var(--font-family);
+  font-family: var(--font);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.btn:active {
-  transform: scale(0.98);
-}
+.btn:active { transform: scale(0.98); }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-teal), var(--accent-purple));
+  background: var(--primary);
   color: white;
-  box-shadow: 0 4px 15px rgba(20, 184, 166, 0.2);
+  box-shadow: 0 2px 8px rgba(20,184,166,0.25);
 }
-
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(20, 184, 166, 0.3);
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(20,184,166,0.35);
 }
-
 .btn-primary:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
+  background: white;
   color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border);
 }
-
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
-.btn-large {
-  padding: 14px 28px;
-  font-size: 1rem;
-  border-radius: 12px;
+.btn-danger {
+  background: white;
+  color: var(--danger);
+  border: 1px solid #fecaca;
+}
+.btn-danger:hover {
+  background: var(--danger-light);
 }
 
-.btn-small {
-  padding: 8px 16px;
-  font-size: 0.82rem;
-}
+.btn-large { padding: 14px 28px; font-size: 1rem; border-radius: var(--radius); }
+.btn-small { padding: 8px 16px; font-size: 0.82rem; }
+.btn-full { width: 100%; }
 
-.btn-full {
-  width: 100%;
-}
-
-/* ==================== Scrollbar ==================== */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* ==================== Selection ==================== */
-::selection {
-  background: rgba(20, 184, 166, 0.3);
-  color: white;
-}
-
-/* ==================== Form Inputs (imported from Auth.css but shared) ==================== */
+/* ==================== Form Inputs ==================== */
 .form-input {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
-  color: white;
+  color: var(--text);
   font-size: 0.95rem;
-  font-family: var(--font-family);
+  font-family: var(--font);
   transition: all 0.2s;
   outline: none;
+  width: 100%;
 }
-
 .form-input:focus {
-  border-color: rgba(20, 184, 166, 0.5);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(20,184,166,0.1);
 }
-
-.form-input::placeholder {
-  color: rgba(255, 255, 255, 0.25);
-}
+.form-input::placeholder { color: var(--text-muted); }
 
 .form-textarea {
   min-height: 100px;
@@ -180,30 +135,56 @@ body::before {
   line-height: 1.5;
 }
 
-/* ==================== Page Container ==================== */
+/* ==================== Layout ==================== */
 .page-container {
-  max-width: 1000px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 100px 24px 60px;
+  padding: 88px 24px 60px;
 }
 
 /* ==================== Loading ==================== */
 .loading-state {
   text-align: center;
   padding: 80px 24px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
 }
-
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.08);
-  border-top-color: var(--accent-teal);
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
   border-radius: 50%;
   margin: 0 auto 16px;
   animation: spin 0.8s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ==================== Empty State ==================== */
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  background: white;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
 }
+.empty-icon { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+.empty-text { color: var(--text-muted); margin: 0 0 16px; font-size: 0.95rem; }
+
+/* ==================== Cards ==================== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+/* ==================== Scrollbar ==================== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }

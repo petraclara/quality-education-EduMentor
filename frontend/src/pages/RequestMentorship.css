@@ -1,0 +1,7 @@
+.rqm-page { max-width: 520px; margin: 0 auto; }
+.rqm-card { }
+.rqm-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+.rqm-sub { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 24px; }
+.rqm-form { display: flex; flex-direction: column; gap: 18px; }
+.rqm-field { display: flex; flex-direction: column; gap: 6px; }
+.rqm-field label { font-size: 0.9rem; font-weight: 600; color: var(--text); }

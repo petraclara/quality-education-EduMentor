@@ -1,0 +1,77 @@
+.pref-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.pref-card {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: var(--shadow);
+}
+.pref-header { text-align: center; margin-bottom: 32px; }
+.pref-emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
+.pref-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+.pref-sub { color: var(--text-muted); font-size: 0.92rem; }
+
+.pref-form { display: flex; flex-direction: column; gap: 24px; }
+.pref-section { display: flex; flex-direction: column; gap: 10px; }
+.pref-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.optional { font-weight: 400; color: var(--text-muted); font-size: 0.82rem; }
+
+.interest-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.interest-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: white;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.interest-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.interest-btn-active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.level-options { display: flex; gap: 8px; }
+.level-btn {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.level-btn:hover { border-color: var(--primary); }
+.level-btn-active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}

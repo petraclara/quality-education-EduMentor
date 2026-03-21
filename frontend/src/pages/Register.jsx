@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import './Auth.css';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('mentee');
-  const [error, setError] = useState('');
+  const [role, setRole] = useState('learner');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
-      await register(name, email, password, role);
-      navigate('/profile');
+      await login({ name, email, password, role }, true);
+      navigate('/preferences');
     } catch (err) {
-      setError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -29,87 +29,40 @@ export default function Register() {
 
   return (
     <div className="auth-page">
+      <ToastContainer />
       <div className="auth-card">
-        <div className="auth-header">
-          <span className="auth-icon">🚀</span>
-          <h1 className="auth-title">Get Started</h1>
-          <p className="auth-subtitle">Create your account and start matching</p>
-        </div>
-
-        {error && <div className="auth-error">{error}</div>}
+        <h1 className="auth-title">Create Account</h1>
+        <p className="auth-sub">Join EduMentor and start your journey</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input
-              id="register-name"
-              type="text"
-              className="form-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ada Lovelace"
-              required
-            />
-          </div>
+          <input id="reg-name" className="form-input" type="text" placeholder="Full Name"
+            value={name} onChange={(e) => setName(e.target.value)} required />
+          <input id="reg-email" className="form-input" type="email" placeholder="Email"
+            value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input id="reg-password" className="form-input" type="password" placeholder="Password (min 6 chars)"
+            value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
 
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input
-              id="register-email"
-              type="email"
-              className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              id="register-password"
-              type="password"
-              className="form-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              required
-              minLength={6}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">I want to be a...</label>
-            <div className="role-selector">
-              {['mentee', 'mentor', 'both'].map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={`role-option ${role === r ? 'role-option-active' : ''}`}
-                  onClick={() => setRole(r)}
-                >
-                  <span className="role-option-icon">
-                    {r === 'mentee' ? '📚' : r === 'mentor' ? '🎯' : '🔄'}
-                  </span>
-                  <span className="role-option-label">{r}</span>
-                </button>
-              ))}
+          <div className="role-selection">
+            <label className="role-label">I want to be a:</label>
+            <div className="role-options">
+              <button type="button" className={`role-btn ${role === 'learner' ? 'role-btn-active' : ''}`}
+                onClick={() => setRole('learner')}>
+                📚 Learner
+              </button>
+              <button type="button" className={`role-btn ${role === 'mentor' ? 'role-btn-active' : ''}`}
+                onClick={() => setRole('mentor')}>
+                🎓 Mentor
+              </button>
             </div>
           </div>
 
-          <button
-            id="register-submit"
-            type="submit"
-            className="btn btn-primary btn-full"
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
+          <button id="reg-submit" type="submit" className="btn btn-primary btn-large btn-full" disabled={loading}>
+            {loading ? 'Creating account...' : 'Continue'}
           </button>
         </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/login" className="auth-link">Sign in</Link>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
     </div>

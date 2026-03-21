@@ -12,50 +12,60 @@ import (
 )
 
 func main() {
-	// Initialize database
 	db, err := database.New("edumentor.db")
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
 	defer db.Close()
 
-	// Initialize handlers
+	if err := db.SeedDemoData(); err != nil {
+		log.Println("Warning: failed to seed demo data:", err)
+	}
+
 	authHandler := handlers.NewAuthHandler(db)
 	profileHandler := handlers.NewProfileHandler(db)
-	matchHandler := handlers.NewMatchHandler(db)
 	dashboardHandler := handlers.NewDashboardHandler(db)
+	mentorHandler := handlers.NewMentorHandler(db)
+	requestHandler := handlers.NewRequestHandler(db)
+	bookingHandler := handlers.NewBookingHandler(db)
 
-	// Auth middleware
 	authMW := middleware.Auth(db)
-
-	// Create router
 	mux := http.NewServeMux()
 
 	// Public routes
 	mux.HandleFunc("/api/register", authHandler.Register)
 	mux.HandleFunc("/api/login", authHandler.Login)
 	mux.HandleFunc("/api/logout", authHandler.Logout)
+	mux.HandleFunc("/api/mentors", mentorHandler.ListMentors)
+	mux.HandleFunc("/api/mentors/", mentorHandler.GetMentor)
 
 	// Protected routes
 	mux.Handle("/api/me", authMW(http.HandlerFunc(authHandler.Me)))
 	mux.Handle("/api/profile", authMW(http.HandlerFunc(profileHandler.HandleProfile)))
-	mux.Handle("/api/matches/find", authMW(http.HandlerFunc(matchHandler.FindMatches)))
-	mux.Handle("/api/matches", authMW(http.HandlerFunc(matchHandler.GetMyMatches)))
 	mux.Handle("/api/dashboard", authMW(http.HandlerFunc(dashboardHandler.GetDashboard)))
+	mux.Handle("/api/requests", authMW(http.HandlerFunc(requestHandler.HandleRequests)))
+	mux.Handle("/api/bookings", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			bookingHandler.GetBookings(w, r)
+		case http.MethodPost:
+			bookingHandler.CreateBooking(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
 
-	// Match action routes (accept/reject) - uses path prefix matching
-	mux.Handle("/api/matches/", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Request action routes: /api/requests/{id}/accept or /api/requests/{id}/decline
+	mux.Handle("/api/requests/", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		if len(parts) >= 4 && (parts[3] == "accept" || parts[3] == "reject") {
-			matchHandler.UpdateMatch(w, r)
+		if len(parts) >= 4 && (parts[3] == "accept" || parts[3] == "decline") {
+			requestHandler.HandleRequestAction(w, r)
 			return
 		}
 		http.NotFound(w, r)
 	})))
 
-	// Apply CORS middleware
 	handler := middleware.CORS(mux)
-
 	fmt.Println("🎓 EduMentor API server starting on http://localhost:8080")
 	fmt.Println("   Press Ctrl+C to stop")
 	log.Fatal(http.ListenAndServe(":8080", handler))

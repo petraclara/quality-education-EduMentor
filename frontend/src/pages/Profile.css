@@ -1,46 +1,15 @@
-.profile-page {
-  max-width: 700px;
-  margin: 0 auto;
-}
+.profile-page { max-width: 600px; margin: 0 auto; }
+.prof-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+.prof-sub { color: var(--text-muted); margin-bottom: 24px; }
+.prof-form { display: flex; flex-direction: column; gap: 16px; }
+.prof-section h2 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+.prof-hint { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px; }
 
-.profile-header {
-  margin-bottom: 36px;
+.level-options { display: flex; gap: 8px; }
+.level-btn {
+  flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: white; color: var(--text-secondary); font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
 }
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: white;
-  margin: 0 0 6px 0;
-}
-
-.page-subtitle {
-  color: rgba(255, 255, 255, 0.5);
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.profile-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-label {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: white;
-  margin: 0;
-}
-
-.section-hint {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0;
-}
+.level-btn:hover { border-color: var(--primary); }
+.level-btn-active { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }

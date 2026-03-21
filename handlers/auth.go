@@ -45,8 +45,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Role != "mentor" && req.Role != "mentee" && req.Role != "both" {
-		jsonError(w, "role must be 'mentor', 'mentee', or 'both'", http.StatusBadRequest)
+	if req.Role != "mentor" && req.Role != "learner" {
+		jsonError(w, "role must be 'mentor' or 'learner'", http.StatusBadRequest)
 		return
 	}
 

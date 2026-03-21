@@ -2,9 +2,76 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import MatchCard from '../components/MatchCard';
 import { useToast } from '../components/Toast';
 import './Dashboard.css';
+
+const AVATAR_COLORS = ['#14b8a6','#8b5cf6','#f59e0b','#ec4899','#06b6d4','#10b981','#f43f5e','#6366f1'];
+
+function MentorCardSmall({ mentor }) {
+  const bg = AVATAR_COLORS[mentor.id % AVATAR_COLORS.length];
+  const initials = mentor.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+  return (
+    <Link to={`/mentor/${mentor.id}`} className="mentor-card-sm">
+      <div className="mc-avatar" style={{ background: bg }}>{initials}</div>
+      <div className="mc-info">
+        <h3 className="mc-name">{mentor.name}</h3>
+        <div className="mc-meta">
+          {mentor.skills?.slice(0, 3).map((s, i) => (
+            <span key={i} className="mc-skill">{s}</span>
+          ))}
+        </div>
+        <p className="mc-bio">{mentor.bio?.slice(0, 80)}{mentor.bio?.length > 80 ? '...' : ''}</p>
+      </div>
+      <span className="mc-arrow">→</span>
+    </Link>
+  );
+}
+
+function RequestCard({ req, onAccept, onDecline }) {
+  const [reason, setReason] = useState('');
+  const [showDecline, setShowDecline] = useState(false);
+
+  return (
+    <div className={`request-card rq-${req.status}`}>
+      <div className="rq-header">
+        <div>
+          <strong className="rq-name">{req.learner_name}</strong>
+          {req.learner_level && <span className="rq-level">{req.learner_level}</span>}
+        </div>
+        <span className={`rq-status rq-status-${req.status}`}>
+          {req.status === 'pending' && '⏳ Pending'}
+          {req.status === 'accepted' && '✅ Accepted'}
+          {req.status === 'declined' && '❌ Declined'}
+        </span>
+      </div>
+      <p className="rq-help"><strong>Needs help with:</strong> {req.help_with}</p>
+      {req.goal && <p className="rq-goal"><strong>Goal:</strong> {req.goal}</p>}
+      {req.message && <p className="rq-msg">"{req.message}"</p>}
+
+      {req.status === 'pending' && (
+        <div className="rq-actions">
+          <button className="btn btn-primary btn-small" onClick={() => onAccept(req.id)}>Accept</button>
+          {showDecline ? (
+            <div className="decline-flow">
+              <select className="decline-select" value={reason} onChange={(e) => setReason(e.target.value)}>
+                <option value="">Select reason...</option>
+                <option value="Busy">Busy</option>
+                <option value="Not my area">Not my area</option>
+                <option value="Not a good fit">Not a good fit</option>
+              </select>
+              <button className="btn btn-danger btn-small" disabled={!reason}
+                onClick={() => { onDecline(req.id, reason); setShowDecline(false); }}>
+                Confirm Decline
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-secondary btn-small" onClick={() => setShowDecline(true)}>Decline</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -12,9 +79,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { showToast, ToastContainer } = useToast();
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
+  useEffect(() => { fetchDashboard(); }, []);
 
   const fetchDashboard = async () => {
     try {
@@ -29,144 +94,95 @@ export default function Dashboard() {
 
   const handleAccept = async (id) => {
     try {
-      await api.acceptMatch(id);
-      showToast('Match accepted!', 'success');
+      await api.acceptRequest(id);
+      showToast('Request accepted! 🎉', 'success');
       fetchDashboard();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
-  const handleReject = async (id) => {
+  const handleDecline = async (id, reason) => {
     try {
-      await api.rejectMatch(id);
-      showToast('Match declined', 'info');
+      await api.declineRequest(id, reason);
+      showToast('Request declined', 'info');
       fetchDashboard();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
   if (loading) {
+    return <div className="page-container"><div className="loading-state"><div className="loading-spinner"></div><p>Loading...</p></div></div>;
+  }
+
+  // LEARNER DASHBOARD
+  if (data?.role === 'learner') {
+    const mentors = data.mentors || [];
     return (
       <div className="page-container">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading dashboard...</p>
+        <ToastContainer />
+        <div className="dash">
+          <div className="dash-welcome">
+            <h1>Hi {data.user?.name?.split(' ')[0]} 👋</h1>
+            <p className="dash-sub">Mentors matched for you</p>
+          </div>
+
+          {mentors.length > 0 ? (
+            <div className="mentor-list">
+              {mentors.map(m => <MentorCardSmall key={m.id} mentor={m} />)}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <span className="empty-icon">😕</span>
+              <p className="empty-text">No mentors matched your preferences yet</p>
+              <Link to="/explore" className="btn btn-primary btn-small">Explore All Mentors</Link>
+            </div>
+          )}
+
+          <div className="dash-explore-link">
+            <Link to="/explore" className="btn btn-secondary">Explore All Mentors</Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  const stats = data?.stats || {};
-  const profile = data?.profile || {};
-  const recentMatches = data?.recent_matches || [];
-  const hasProfile = profile.skills?.length > 0 || profile.interests?.length > 0;
-
+  // MENTOR DASHBOARD
+  const requests = data?.requests || [];
+  const pending = requests.filter(r => r.status === 'pending');
   return (
     <div className="page-container">
       <ToastContainer />
-
-      <div className="dashboard">
-        {/* Welcome Section */}
-        <div className="dashboard-welcome">
-          <div className="welcome-text">
-            <h1 className="welcome-title">
-              Welcome back, <span className="gradient-text">{user?.name}</span>
-            </h1>
-            <p className="welcome-subtitle">
-              {hasProfile
-                ? "Here's your matching overview"
-                : "Complete your profile to find great matches"}
-            </p>
-          </div>
-          <div className="welcome-actions">
-            {!hasProfile && (
-              <Link to="/profile" className="btn btn-primary">
-                Complete Profile →
-              </Link>
-            )}
-            <Link to="/matches" className="btn btn-secondary">
-              Find Matches
-            </Link>
-          </div>
+      <div className="dash">
+        <div className="dash-welcome">
+          <h1>Welcome, {data?.user?.name?.split(' ')[0]} 🎓</h1>
+          <p className="dash-sub">Your mentor dashboard</p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="stats-grid">
+        <div className="dash-stats">
           <div className="stat-card">
-            <div className="stat-value">{stats.total_matches || 0}</div>
-            <div className="stat-label">Total Matches</div>
+            <span className="stat-val">{pending.length}</span>
+            <span className="stat-label">New Requests</span>
           </div>
-          <div className="stat-card stat-card-accepted">
-            <div className="stat-value">{stats.accepted_matches || 0}</div>
-            <div className="stat-label">Accepted</div>
+          <div className="stat-card">
+            <span className="stat-val">{requests.filter(r => r.status === 'accepted').length}</span>
+            <span className="stat-label">Accepted</span>
           </div>
-          <div className="stat-card stat-card-pending">
-            <div className="stat-value">{stats.pending_matches || 0}</div>
-            <div className="stat-label">Pending</div>
-          </div>
-          <div className="stat-card stat-card-rejected">
-            <div className="stat-value">{stats.rejected_matches || 0}</div>
-            <div className="stat-label">Declined</div>
+          <div className="stat-card">
+            <span className="stat-val">{requests.length}</span>
+            <span className="stat-label">Total</span>
           </div>
         </div>
 
-        {/* Profile Summary */}
-        {hasProfile && (
-          <div className="dashboard-section">
-            <h2 className="section-heading">Your Profile</h2>
-            <div className="profile-summary-card">
-              <div className="profile-summary-tags">
-                {profile.skills?.length > 0 && (
-                  <div>
-                    <span className="tags-label">Skills:</span>
-                    <div className="tags-list">
-                      {profile.skills.map((s, i) => (
-                        <span key={i} className="tag-pill skill-pill">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {profile.interests?.length > 0 && (
-                  <div>
-                    <span className="tags-label">Interests:</span>
-                    <div className="tags-list">
-                      {profile.interests.map((s, i) => (
-                        <span key={i} className="tag-pill interest-pill">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <Link to="/profile" className="btn btn-small btn-secondary">Edit Profile</Link>
-            </div>
-          </div>
-        )}
+        {pending.length > 0 && <h2 className="section-title">New Requests ({pending.length})</h2>}
 
-        {/* Recent Matches */}
-        <div className="dashboard-section">
-          <div className="section-header">
-            <h2 className="section-heading">Recent Matches</h2>
-            <Link to="/matches" className="section-link">View All →</Link>
-          </div>
-          {recentMatches.length > 0 ? (
-            <div className="matches-list">
-              {recentMatches.map(match => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  onAccept={handleAccept}
-                  onReject={handleReject}
-                  currentUserId={user?.id}
-                />
-              ))}
-            </div>
+        <div className="requests-list">
+          {requests.length > 0 ? (
+            requests.map(r => (
+              <RequestCard key={r.id} req={r} onAccept={handleAccept} onDecline={handleDecline} />
+            ))
           ) : (
             <div className="empty-state">
-              <span className="empty-icon">🔍</span>
-              <p className="empty-text">No matches yet.</p>
-              <Link to="/matches" className="btn btn-primary btn-small">Find Matches</Link>
+              <span className="empty-icon">📭</span>
+              <p className="empty-text">No requests yet. Learners will find you based on your profile.</p>
+              <Link to="/profile" className="btn btn-primary btn-small">Update Profile</Link>
             </div>
           )}
         </div>

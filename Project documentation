@@ -1,4 +1,532 @@
-mentor mentee matching web application
+My idea
 
-matches mentors with mentees based on their interests, skills, and availability
+Mentorship 
+This is a key aspect in learning. We benefit a lot from other people other than reading on our own. Some people understand a concept better than we get it and teach in a certain way that would make others understand it better and remember. Another thing is some mentors have been there before , they can advise beginners on what to do better , mistakes not to make; advise to younger self and that is why we all need mentors.
+
+I have an idea to make this possible and this is to make an app that can help learners find such mentors , learn from them , a mentor with particular interests as them. Also for mentors who want to give back to the community.
+I want something simple to start so we can use it in our school.
+
+Features
+Signup
+Enter preferences
+
+Request mentorship with a message eg am interested about learning loops in python
+Before sending a request, ask learners:
+What do you want help with?
+Your current level?
+Goal? 
+🎯 Learner User Journey (Your Mentorship App)
+🟢 1. Entry Point (First Contact)
+Goal: Get the learner into the app
+Learner hears about the app (school, friends, poster, WhatsApp)
+Opens the app / website
+👉 Screen:
+“Find the right mentor for you”
+CTA: Sign Up / Get Started
+
+📝 2. Sign Up + Preferences (MOST IMPORTANT STEP)
+Goal: Understand the learner immediately
+Learner fills:
+Name / Email / Password
+Select Role → Learner
+Interests (e.g. Python, Data Science)
+Current Level → Beginner / Intermediate / Advanced
+Goal (optional but powerful):
+“Pass exam”
+“Build projects”
+“Learn basics”
+👉 UX Tip:
+ Make this feel like:
+“Let’s find the best mentor for you” (not a boring form)
+
+🧠 3. Smart Matching Happens (Behind the Scenes)
+System uses their preferences to:
+Filter mentors
+Rank best matches
+
+🏠 4. Dashboard (Personalized Experience)
+Goal: Instant value — no searching needed
+Learner sees:
+“Mentors matched for you”
+List of mentors:
+Name
+Skills
+Level they teach
+Short bio
+👉 This is your WOW moment
+
+👀 5. View Mentor Profile
+Goal: Build trust before requesting
+Learner clicks a mentor → sees:
+Bio
+Skills
+Experience
+Who they help (e.g. beginners)
+Availability (optional)
+
+📩 6. Send Mentorship Request
+Goal: Start connection
+Learner clicks:
+“Request Mentorship”
+Fills:
+What they need help with
+Their goal
+Optional message
+Example:
+“I’m learning Go and struggling with loops. I want to build small projects.”
+
+⏳ 7. Waiting State
+Goal: Keep user engaged
+System shows:
+Request status → Pending
+👉 UX Idea:
+Suggest other mentors while waiting
+
+✅ ❌ 8. Mentor Response
+If Accepted:
+🎉 Learner sees:
+“Your request was accepted!”
+Can now:
+Message mentor (future feature)
+Schedule session
+
+If Declined:
+👉 Show reason (important!):
+Busy
+Not a good fit
+Not their area
+Suggest:
+“Here are similar mentors”
+
+🔍 9. Explore Option (User Control)
+At any time, learner can:
+Click “Explore Mentors”
+See all mentors
+Apply filters:
+Skill
+Level
+Availability
+
+🔁 10. Continuous Use (Retention)
+Learner:
+Connects with multiple mentors
+Learns different skills
+Possibly becomes a mentor later 👀
+
+🔥 Visual Flow (Simple)
+Sign Up → Preferences → Dashboard (Matches)
+      → View Mentor → Send Request
+      → Accepted / Declined
+      → Explore More Mentors
+
+💡 Key Experience Principles You’re Using
+✅ Personalization first
+Users don’t feel lost
+✅ Low effort
+No heavy searching
+✅ Feedback loops
+Accept / decline improves system
+✅ Flexibility
+Explore option gives freedom
+
+🧠 Product Insight (Important)
+Your app is not just:
+“Find mentors”
+It is:
+“Guide learners to the RIGHT mentor quickly”
+That’s what makes it powerful.
+
+🎨 Learner UI Screens (Exact Pages)
+
+🟢 1. Landing Page (First Screen)
+Goal: Convert visitor → sign up
+Layout:
+---------------------------------
+LOGO        | Login
+
+Headline:
+Find the Right Mentor for You
+
+Subtext:
+Get personalized mentorship based on your goals and interests.
+
+[ Get Started ]  (Primary Button)
+
+---------------------------------
+Key Elements:
+Simple, clean
+One main CTA: Get Started
+
+📝 2. Sign Up Page
+Goal: Create account
+Layout:
+---------------------------------
+Create Account
+
+Name: [__________]
+Email: [__________]
+Password: [__________]
+
+Role:
+( ) Learner   ( ) Mentor
+
+[ Continue ]
+---------------------------------
+👉 After clicking Continue → go to Preferences
+
+🎯 3. Preferences Page (Important Screen)
+Goal: Collect matching data
+Layout:
+---------------------------------
+Tell us about you
+
+What do you want to learn?
+[ Python ] [ Data Science ] [ Marketing ]
+
+Your level:
+( ) Beginner
+( ) Intermediate
+( ) Advanced
+
+Your goal:
+[________________________]
+
+[ Save & Continue ]
+---------------------------------
+UX Tips:
+Use buttons/tags for skills (not plain text)
+Keep it fast and friendly
+
+🏠 4. Dashboard (Auto-Matched Mentors)
+Goal: Show value immediately
+Layout:
+---------------------------------
+Hi Clare 👋
+
+Mentors matched for you
+
+---------------------------------
+| John Doe                  |
+| Python | Beginner         |
+| "I help beginners..."     |
+| [ View Profile ]          |
+---------------------------------
+
+| Jane Smith                |
+| Data Science | Beginner   |
+| "Let's learn together..." |
+| [ View Profile ]          |
+---------------------------------
+
+[ Explore All Mentors ]
+---------------------------------
+Key Idea:
+This is personalized content
+No empty screen
+
+👤 5. Mentor Profile Page
+Goal: Help learner decide
+Layout:
+---------------------------------
+John Doe
+
+Skills: Python, Django
+Level: Beginner
+Bio:
+"I help students understand coding basics..."
+
+---------------------------------
+[ Request Mentorship ]
+---------------------------------
+Optional:
+Availability
+Experience
+
+📩 6. Request Mentorship Page
+Goal: Send meaningful request
+Layout:
+---------------------------------
+Request Mentorship
+
+What do you need help with?
+[________________________]
+
+Your goal:
+[________________________]
+
+Message:
+[________________________]
+
+[ Send Request ]
+---------------------------------
+👉 Keep it simple but guided
+
+⏳ 7. Request Status Page
+Goal: Keep learner informed
+Layout:
+---------------------------------
+Your Requests
+
+John Doe → Pending ⏳
+Jane Smith → Accepted ✅
+Mark → Declined ❌ (Busy)
+
+---------------------------------
+UX Upgrade:
+Show decline reason
+Add “Find similar mentors”
+
+🔍 8. Explore Mentors Page
+Goal: Full control browsing
+Layout:
+---------------------------------
+Explore Mentors
+
+Filter:
+Skill: [Python ▼]
+Level: [Beginner ▼]
+
+---------------------------------
+| Mentor Card                |
+---------------------------------
+| Mentor Card                |
+---------------------------------
+
+🚫 9. Empty State (Very Important)
+If no matches:
+---------------------------------
+No mentors matched your preferences 😕
+
+[ Explore All Mentors ]
+---------------------------------
+
+🎯 Design Style (Keep it Simple)
+White background
+Soft shadows for cards
+Rounded corners
+Minimal colors (1 primary color)
+
+🎯 Mentor User Journey (End-to-End)
+
+🟢 1. Entry Point (Why they join)
+Goal: Attract mentors
+Mentor sees:
+“Help others grow”
+“Share your knowledge”
+“Give back to your community”
+👉 CTA:
+“Become a Mentor”
+🎯 Mentor User Journey (End-to-End)
+
+🟢 1. Entry Point (Why they join)
+Goal: Attract mentors
+Mentor sees:
+“Help others grow”
+“Share your knowledge”
+“Give back to your community”
+👉 CTA:
+“Become a Mentor”
+
+📝 2. Sign Up
+Same as learner, but selects:
+Role → Mentor
+
+🎯 3. Mentor Profile Setup (VERY IMPORTANT)
+Goal: Make them discoverable
+Mentor fills:
+Skills they can teach
+ (e.g. Python, Data Science, Go)
+Level they teach
+ (Beginner / Intermediate / Advanced)
+Bio:
+
+
+ “I help beginners understand programming basics”
+
+
+
+Optional:
+Availability
+Max mentees (🔥 important)
+
+🧠 4. Visibility in System
+Behind the scenes:
+Mentor is now:
+Searchable
+Included in matches
+👉 This is where your learner matching system uses their data
+
+🏠 5. Mentor Dashboard
+Goal: Control + overview
+Mentor sees:
+Incoming requests
+Current mentees (optional later)
+Status overview
+Example:
+New Requests (3)
+
+Clare → Wants help with Python → [Accept] [Decline]
+John → Data Science basics → [Accept] [Decline]
+
+📩 6. Review Request
+Goal: Decide if they can help
+Mentor clicks request → sees:
+Learner’s goal
+What they need help with
+Their level
+👉 This helps mentor decide quickly
+
+✅ ❌ 7. Accept or Decline
+If Accept:
+Learner is notified
+Connection is created
+👉 Future:
+Chat / session scheduling
+
+If Decline:
+Mentor selects reason:
+Busy
+Not my area
+Not a good fit
+👉 This improves user experience massively
+
+🧑‍🤝‍🧑 8. Active Mentorship (Future Phase)
+Mentor:
+Guides learner
+Shares resources
+Tracks progress (optional later)
+
+⚙️ 9. Manage Preferences
+Mentor can update:
+Skills
+Availability
+Max mentees
+👉 Example:
+“I can only handle 2 learners”
+
+🔁 10. Continuous Engagement
+Mentor:
+Accepts new mentees over time
+Builds reputation (future feature 👀)
+Possibly gets ratings
+
+🔥 Simple Flow (Mentor Side)
+Sign Up → Set Profile → Appear in Matches
+       → Receive Requests → Accept/Decline
+       → Guide Learners → Repeat
+
+💡 Key Design Principles (Mentor Side)
+✅ Control
+Mentors choose who to accept
+✅ Clarity
+Requests are detailed
+✅ Low Pressure
+They can decline without stress
+✅ Flexibility
+They set limits (availability, mentees)
+
+⚠️ Important Insight (Very Critical)
+If mentors feel:
+Overwhelmed ❌
+Forced ❌
+Matched poorly ❌
+👉 They will stop using your app
+So your system must:
+Filter well
+Respect their time
+Give control
+
+🧠 Smart Features You Can Add Later
+Auto-hide mentor when full
+“Top mentor” badge
+Response rate tracking
+Suggested learners (reverse matching 👀)
+
+📝 2. Sign Up
+Same as learner, but selects:
+Role → Mentor
+
+🎯 3. Mentor Profile Setup (VERY IMPORTANT)
+Goal: Make them discoverable
+Mentor fills:
+Skills they can teach
+ (e.g. Python, Data Science, Go)
+Level they teach
+ (Beginner / Intermediate / Advanced)
+Bio:
+
+
+ “I help beginners understand programming basics”
+
+
+
+Optional:
+Availability
+Max mentees (🔥 important)
+
+🧠 4. Visibility in System
+Behind the scenes:
+Mentor is now:
+Searchable
+Included in matches
+👉 This is where your learner matching system uses their data
+
+🏠 5. Mentor Dashboard
+Goal: Control + overview
+Mentor sees:
+Incoming requests
+Current mentees (optional later)
+Status overview
+Example:
+New Requests (3)
+
+Clare → Wants help with Python → [Accept] [Decline]
+John → Data Science basics → [Accept] [Decline]
+
+📩 6. Review Request
+Goal: Decide if they can help
+Mentor clicks request → sees:
+Learner’s goal
+What they need help with
+Their level
+👉 This helps mentor decide quickly
+
+✅ ❌ 7. Accept or Decline
+If Accept:
+Learner is notified
+Connection is created
+👉 Future:
+Chat / session scheduling
+
+If Decline:
+Mentor selects reason:
+Busy
+Not my area
+Not a good fit
+👉 This improves user experience massively
+
+🧑‍🤝‍🧑 8. Active Mentorship (Future Phase)
+Mentor:
+Guides learner
+Shares resources
+Tracks progress (optional later)
+
+⚙️ 9. Manage Preferences
+Mentor can update:
+Skills
+Availability
+Max mentees
+👉 Example:
+“I can only handle 2 learners”
+
+🔁 10. Continuous Engagement
+Mentor:
+Accepts new mentees over time
+Builds reputation (future feature 👀)
+Possibly gets ratings
+
+🔥 Simple Flow (Mentor Side)
+Sign Up → Set Profile → Appear in Matches
+       → Receive Requests → Accept/Decline
+       → Guide Learners → Repeat
 
