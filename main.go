@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/petraclara/quality-education-EduMentor/database"
@@ -65,8 +66,13 @@ func main() {
 		http.NotFound(w, r)
 	})))
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	handler := middleware.CORS(mux)
-	fmt.Println("🎓 MentorConnect API server starting on http://localhost:8080")
+	fmt.Println("🎓 MentorConnect API server starting on port", port)
 	fmt.Println("   Press Ctrl+C to stop")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
