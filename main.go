@@ -66,7 +66,7 @@ func main() {
 	})))
 
 	handler := middleware.CORS(mux)
-	fmt.Println("🎓 EduMentor API server starting on http://localhost:8080")
+	fmt.Println("🎓 MentorConnect API server starting on http://localhost:8080")
 	fmt.Println("   Press Ctrl+C to stop")
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }

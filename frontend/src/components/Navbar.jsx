@@ -9,7 +9,7 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="navbar-inner">
         <Link to={user ? '/dashboard' : '/'} className="navbar-brand">
-          🎓 <span>EduMentor</span>
+          🎓 <span>MentorConnect</span>
         </Link>
 
         <div className="navbar-links">

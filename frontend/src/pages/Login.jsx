@@ -30,7 +30,7 @@ export default function Login() {
       <ToastContainer />
       <div className="auth-card">
         <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-sub">Login to your EduMentor account</p>
+        <p className="auth-sub">Login to your MentorConnect account</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <input id="login-email" className="form-input" type="email" placeholder="Email"

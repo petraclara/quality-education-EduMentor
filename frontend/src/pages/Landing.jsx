@@ -34,11 +34,6 @@ export default function Landing() {
         </div>
       </div>
 
-      <div className="landing-cta">
-        <h2>Ready to start learning?</h2>
-        <p>Join EduMentor today and find the mentor who'll help you reach your goals.</p>
-        <Link to="/register" className="btn btn-primary btn-large">Get Started — It's Free</Link>
-      </div>
     </div>
   );
 }

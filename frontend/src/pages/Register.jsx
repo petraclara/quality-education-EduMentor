@@ -32,7 +32,7 @@ export default function Register() {
       <ToastContainer />
       <div className="auth-card">
         <h1 className="auth-title">Create Account</h1>
-        <p className="auth-sub">Join EduMentor and start your journey</p>
+        <p className="auth-sub">Join MentorConnect and start your journey</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <input id="reg-name" className="form-input" type="text" placeholder="Full Name"
