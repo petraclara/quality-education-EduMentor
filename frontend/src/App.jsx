@@ -13,10 +13,13 @@ import MyRequests from './pages/MyRequests';
 import ExploreMentors from './pages/ExploreMentors';
 import './App.css';
 
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+function ProtectedRoute({ children, requirePreferences = true }) {
+  const { user, preferencesSet, loading } = useAuth();
   if (loading) return <div className="page-container"><div className="loading-state"><div className="loading-spinner"></div></div></div>;
-  return user ? children : <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+  // If preferences are required and not set, redirect to preferences page
+  if (requirePreferences && !preferencesSet) return <Navigate to="/preferences" />;
+  return children;
 }
 
 function GuestRoute({ children }) {
@@ -33,7 +36,8 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
-        <Route path="/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />
+        {/* Preferences page: protected but does NOT require preferences (avoids redirect loop) */}
+        <Route path="/preferences" element={<ProtectedRoute requirePreferences={false}><Preferences /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/explore" element={<ProtectedRoute><ExploreMentors /></ProtectedRoute>} />

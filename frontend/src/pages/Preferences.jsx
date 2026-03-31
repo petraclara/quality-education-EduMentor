@@ -12,7 +12,7 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function Preferences() {
-  const { user } = useAuth();
+  const { user, refreshPreferences } = useAuth();
   const [interests, setInterests] = useState([]);
   const [level, setLevel] = useState('');
   const [goal, setGoal] = useState('');
@@ -44,6 +44,8 @@ export default function Preferences() {
         max_mentees: 5,
       };
       await api.updateProfile(profileData);
+      // Refresh the preferences flag so ProtectedRoute lets us through
+      await refreshPreferences();
       showToast('Preferences saved!', 'success');
       navigate('/dashboard');
     } catch (err) {

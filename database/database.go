@@ -282,6 +282,19 @@ func (db *DB) UpdateProfile(userID int, req models.ProfileUpdateRequest) error {
 	return err
 }
 
+// HasPreferencesSet checks if a user has filled in their preferences (skills or interests)
+func (db *DB) HasPreferencesSet(userID int) (bool, error) {
+	var skills, interests string
+	err := db.conn.QueryRow(
+		"SELECT skills, interests FROM profiles WHERE user_id = ?", userID,
+	).Scan(&skills, &interests)
+	if err != nil {
+		return false, err
+	}
+	// Default value is '[]', so check for non-empty arrays
+	return (skills != "[]" && skills != "") || (interests != "[]" && interests != ""), nil
+}
+
 // ==================== Mentor Operations ====================
 
 func (db *DB) GetMentors() ([]models.MentorCard, error) {
@@ -332,30 +345,43 @@ func (db *DB) GetMatchedMentors(learnerID int) ([]models.MentorCard, error) {
 	learnerProfile, err := db.GetProfile(learnerID)
 	if err != nil { return nil, err }
 
-	mentors, err := db.GetMentors()
+	allMentors, err := db.GetMentors()
 	if err != nil { return nil, err }
 
+	var matches []models.MentorCard
+
 	// Score each mentor based on interest/skill overlap
-	for i := range mentors {
+	for i := range allMentors {
 		score := 0.0
-		score += jaccardSimilarity(learnerProfile.Interests, mentors[i].Skills) * 0.5
-		score += jaccardSimilarity(learnerProfile.Interests, mentors[i].Interests) * 0.3
+		score += jaccardSimilarity(learnerProfile.Interests, allMentors[i].Skills) * 0.5
+		score += jaccardSimilarity(learnerProfile.Interests, allMentors[i].Interests) * 0.3
 		// level match bonus
-		if learnerProfile.Level != "" && mentors[i].Level == learnerProfile.Level {
+		if learnerProfile.Level != "" && allMentors[i].Level == learnerProfile.Level {
 			score += 0.2
 		}
-		mentors[i].MatchScore = score
+		
+		// Only include mentors with some overlap in skills or interests
+		// Alternatively, just requiring score > 0 after the interest/skill checks is good.
+		// Wait, level match gives 0.2, so a mentor with no skill match but same level could get a score of 0.2.
+		// The user explicitly requested: "what user wants to learn matches what mentor is teaching"
+		skillOverlap := jaccardSimilarity(learnerProfile.Interests, allMentors[i].Skills)
+		interestOverlap := jaccardSimilarity(learnerProfile.Interests, allMentors[i].Interests)
+		
+		if skillOverlap > 0 || interestOverlap > 0 {
+			allMentors[i].MatchScore = score
+			matches = append(matches, allMentors[i])
+		}
 	}
 
 	// Sort by match score descending
-	for i := 0; i < len(mentors); i++ {
-		for j := i + 1; j < len(mentors); j++ {
-			if mentors[j].MatchScore > mentors[i].MatchScore {
-				mentors[i], mentors[j] = mentors[j], mentors[i]
+	for i := 0; i < len(matches); i++ {
+		for j := i + 1; j < len(matches); j++ {
+			if matches[j].MatchScore > matches[i].MatchScore {
+				matches[i], matches[j] = matches[j], matches[i]
 			}
 		}
 	}
-	return mentors, nil
+	return matches, nil
 }
 
 func jaccardSimilarity(a, b []string) float64 {

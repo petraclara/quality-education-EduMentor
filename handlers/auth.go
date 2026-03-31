@@ -167,9 +167,14 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	prefsSet, _ := h.db.HasPreferencesSet(userID)
+
 	jsonResponse(w, http.StatusOK, models.APIResponse{
 		Success: true,
-		Data:    user,
+		Data: map[string]interface{}{
+			"user":            user,
+			"preferences_set": prefsSet,
+		},
 	})
 }
 
