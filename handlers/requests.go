@@ -120,25 +120,31 @@ func (h *RequestHandler) HandleRequestAction(w http.ResponseWriter, r *http.Requ
 	}
 	action := parts[3]
 
-	// Verify request belongs to this mentor
+	// Verify request
 	mentorshipReq, err := h.db.GetRequestByID(reqID)
 	if err != nil {
 		jsonError(w, "request not found", http.StatusNotFound)
 		return
 	}
-	if mentorshipReq.MentorID != userID {
-		jsonError(w, "unauthorized", http.StatusForbidden)
-		return
-	}
 
 	switch action {
 	case "accept":
-		if err := h.db.AcceptRequest(reqID); err != nil {
+		if mentorshipReq.MentorID != userID {
+			jsonError(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		var body models.RequestActionBody
+		json.NewDecoder(r.Body).Decode(&body)
+		if err := h.db.AcceptRequest(reqID, body.MeetingType, body.MeetingLink, body.ProposedSlots); err != nil {
 			jsonError(w, "failed to accept", http.StatusInternalServerError)
 			return
 		}
 		jsonResponse(w, http.StatusOK, models.APIResponse{Success: true, Message: "request accepted"})
 	case "decline":
+		if mentorshipReq.MentorID != userID {
+			jsonError(w, "unauthorized", http.StatusForbidden)
+			return
+		}
 		var body models.RequestActionBody
 		json.NewDecoder(r.Body).Decode(&body)
 		reason := body.DeclineReason
@@ -150,7 +156,23 @@ func (h *RequestHandler) HandleRequestAction(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		jsonResponse(w, http.StatusOK, models.APIResponse{Success: true, Message: "request declined"})
+	case "confirm":
+		if mentorshipReq.LearnerID != userID {
+			jsonError(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		var body models.ConfirmSlotRequest
+		json.NewDecoder(r.Body).Decode(&body)
+		if body.Date == "" || body.Time == "" {
+			jsonError(w, "date and time are required", http.StatusBadRequest)
+			return
+		}
+		if err := h.db.ConfirmRequestSlot(reqID, body.Date, body.Time); err != nil {
+			jsonError(w, "failed to confirm slot", http.StatusInternalServerError)
+			return
+		}
+		jsonResponse(w, http.StatusOK, models.APIResponse{Success: true, Message: "slot confirmed"})
 	default:
-		jsonError(w, "action must be 'accept' or 'decline'", http.StatusBadRequest)
+		jsonError(w, "action must be 'accept', 'decline' or 'confirm'", http.StatusBadRequest)
 	}
 }

@@ -95,6 +95,17 @@ func (db *DB) migrate() error {
 			return fmt.Errorf("migration failed: %w\nQuery: %s", err, q)
 		}
 	}
+
+	// Add new columns to mentorship_requests if they don't exist
+	alterQueries := []string{
+		`ALTER TABLE mentorship_requests ADD COLUMN meeting_type TEXT DEFAULT ''`,
+		`ALTER TABLE mentorship_requests ADD COLUMN meeting_link TEXT DEFAULT ''`,
+		`ALTER TABLE mentorship_requests ADD COLUMN proposed_slots TEXT DEFAULT '[]'`,
+	}
+	for _, q := range alterQueries {
+		db.conn.Exec(q) // ignore errors since column might already exist
+	}
+
 	return nil
 }
 
@@ -415,7 +426,7 @@ func (db *DB) CreateMentorshipRequest(learnerID, mentorID int, helpWith, goal, m
 
 func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWithUser, error) {
 	rows, err := db.conn.Query(`
-		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.created_at,
+		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.meeting_type, r.meeting_link, r.proposed_slots, r.created_at,
 		       learner.name, learner.email, COALESCE(p.level, '')
 		FROM mentorship_requests r
 		JOIN users learner ON r.learner_id = learner.id
@@ -429,9 +440,12 @@ func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWith
 	var requests []models.MentorshipRequestWithUser
 	for rows.Next() {
 		var r models.MentorshipRequestWithUser
+		var slotsJSON string
 		err := rows.Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message,
-			&r.Status, &r.DeclineReason, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel)
+			&r.Status, &r.DeclineReason, &r.MeetingType, &r.MeetingLink, &slotsJSON, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel)
 		if err != nil { return nil, err }
+		json.Unmarshal([]byte(slotsJSON), &r.ProposedSlots)
+		if r.ProposedSlots == nil { r.ProposedSlots = []models.ProposedSlot{} }
 		requests = append(requests, r)
 	}
 	if requests == nil { requests = []models.MentorshipRequestWithUser{} }
@@ -440,7 +454,7 @@ func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWith
 
 func (db *DB) GetRequestsByLearner(learnerID int) ([]models.MentorshipRequestWithUser, error) {
 	rows, err := db.conn.Query(`
-		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.created_at,
+		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.meeting_type, r.meeting_link, r.proposed_slots, r.created_at,
 		       '', '', '', mentor.name
 		FROM mentorship_requests r
 		JOIN users mentor ON r.mentor_id = mentor.id
@@ -453,9 +467,12 @@ func (db *DB) GetRequestsByLearner(learnerID int) ([]models.MentorshipRequestWit
 	var requests []models.MentorshipRequestWithUser
 	for rows.Next() {
 		var r models.MentorshipRequestWithUser
+		var slotsJSON string
 		err := rows.Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message,
-			&r.Status, &r.DeclineReason, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel, &r.MentorName)
+			&r.Status, &r.DeclineReason, &r.MeetingType, &r.MeetingLink, &slotsJSON, &r.CreatedAt, &r.LearnerName, &r.LearnerEmail, &r.LearnerLevel, &r.MentorName)
 		if err != nil { return nil, err }
+		json.Unmarshal([]byte(slotsJSON), &r.ProposedSlots)
+		if r.ProposedSlots == nil { r.ProposedSlots = []models.ProposedSlot{} }
 		requests = append(requests, r)
 	}
 	if requests == nil { requests = []models.MentorshipRequestWithUser{} }
@@ -464,15 +481,34 @@ func (db *DB) GetRequestsByLearner(learnerID int) ([]models.MentorshipRequestWit
 
 func (db *DB) GetRequestByID(id int) (*models.MentorshipRequest, error) {
 	r := &models.MentorshipRequest{}
+	var slotsJSON string
 	err := db.conn.QueryRow(
-		"SELECT id, learner_id, mentor_id, help_with, goal, message, status, decline_reason, created_at FROM mentorship_requests WHERE id = ?", id,
-	).Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message, &r.Status, &r.DeclineReason, &r.CreatedAt)
+		"SELECT id, learner_id, mentor_id, help_with, goal, message, status, decline_reason, meeting_type, meeting_link, proposed_slots, created_at FROM mentorship_requests WHERE id = ?", id,
+	).Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message, &r.Status, &r.DeclineReason, &r.MeetingType, &r.MeetingLink, &slotsJSON, &r.CreatedAt)
 	if err != nil { return nil, err }
+	json.Unmarshal([]byte(slotsJSON), &r.ProposedSlots)
+	if r.ProposedSlots == nil { r.ProposedSlots = []models.ProposedSlot{} }
 	return r, nil
 }
 
-func (db *DB) AcceptRequest(id int) error {
-	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'accepted' WHERE id = ?", id)
+func (db *DB) AcceptRequest(id int, meetingType, meetingLink string, proposedSlots []models.ProposedSlot) error {
+	slotsJSON, _ := json.Marshal(proposedSlots)
+	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'accepted', meeting_type = ?, meeting_link = ?, proposed_slots = ? WHERE id = ?", meetingType, meetingLink, string(slotsJSON), id)
+	return err
+}
+
+func (db *DB) ConfirmRequestSlot(reqID int, date, timeStr string) error {
+	req, err := db.GetRequestByID(reqID)
+	if err != nil { return err }
+	
+	// Overwrite proposed_slots with just the single confirmed slot so UI can easily show it
+	confirmedSlot := []models.ProposedSlot{{Date: date, Time: timeStr}}
+	slotsJSON, _ := json.Marshal(confirmedSlot)
+	
+	_, err = db.conn.Exec("UPDATE mentorship_requests SET status = 'scheduled', proposed_slots = ? WHERE id = ?", string(slotsJSON), reqID)
+	if err != nil { return err }
+	
+	_, err = db.CreateBooking(req.MentorID, req.LearnerID, date, timeStr, "Mentorship session via "+req.MeetingType+": "+req.MeetingLink)
 	return err
 }
 

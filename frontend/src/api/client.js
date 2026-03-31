@@ -28,8 +28,9 @@ export const api = {
 
   sendRequest: (body) => request('/requests', { method: 'POST', body: JSON.stringify(body) }),
   getRequests: () => request('/requests'),
-  acceptRequest: (id) => request(`/requests/${id}/accept`, { method: 'POST' }),
+  acceptRequest: (id, payload) => request(`/requests/${id}/accept`, { method: 'POST', body: JSON.stringify(payload) }),
   declineRequest: (id, reason) => request(`/requests/${id}/decline`, { method: 'POST', body: JSON.stringify({ decline_reason: reason }) }),
+  confirmSlot: (id, payload) => request(`/requests/${id}/confirm`, { method: 'POST', body: JSON.stringify(payload) }),
 
   createBooking: (body) => request('/bookings', { method: 'POST', body: JSON.stringify(body) }),
   getBookings: () => request('/bookings'),

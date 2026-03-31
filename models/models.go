@@ -44,17 +44,26 @@ type MentorCard struct {
 	MatchScore   float64  `json:"match_score,omitempty"`
 }
 
+// ProposedSlot represents an available slot listed by a mentor
+type ProposedSlot struct {
+	Date string `json:"date"`
+	Time string `json:"time"`
+}
+
 // MentorshipRequest represents a learner's request to a mentor
 type MentorshipRequest struct {
-	ID            int       `json:"id"`
-	LearnerID     int       `json:"learner_id"`
-	MentorID      int       `json:"mentor_id"`
-	HelpWith      string    `json:"help_with"`
-	Goal          string    `json:"goal"`
-	Message       string    `json:"message"`
-	Status        string    `json:"status"` // "pending", "accepted", "declined"
-	DeclineReason string    `json:"decline_reason,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID            int            `json:"id"`
+	LearnerID     int            `json:"learner_id"`
+	MentorID      int            `json:"mentor_id"`
+	HelpWith      string         `json:"help_with"`
+	Goal          string         `json:"goal"`
+	Message       string         `json:"message"`
+	Status        string         `json:"status"` // "pending", "accepted", "declined", "scheduled"
+	DeclineReason string         `json:"decline_reason,omitempty"`
+	MeetingType   string         `json:"meeting_type,omitempty"`
+	MeetingLink   string         `json:"meeting_link,omitempty"`
+	ProposedSlots []ProposedSlot `json:"proposed_slots,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 // MentorshipRequestWithUser includes user names
@@ -150,7 +159,15 @@ type MentorshipRequestCreate struct {
 }
 
 type RequestActionBody struct {
-	DeclineReason string `json:"decline_reason,omitempty"`
+	DeclineReason string         `json:"decline_reason,omitempty"`
+	ProposedSlots []ProposedSlot `json:"proposed_slots,omitempty"`
+	MeetingType   string         `json:"meeting_type,omitempty"`
+	MeetingLink   string         `json:"meeting_link,omitempty"`
+}
+
+type ConfirmSlotRequest struct {
+	Date string `json:"date"`
+	Time string `json:"time"`
 }
 
 type BookingRequest struct {

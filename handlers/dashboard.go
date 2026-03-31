@@ -45,7 +45,7 @@ func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) 
 		for _, req := range requests {
 			if req.Status == "pending" {
 				pending++
-			} else if req.Status == "accepted" {
+			} else if req.Status == "accepted" || req.Status == "scheduled" {
 				accepted++
 			}
 		}

@@ -55,10 +55,10 @@ func main() {
 		}
 	})))
 
-	// Request action routes: /api/requests/{id}/accept or /api/requests/{id}/decline
+	// Request action routes: /api/requests/{id}/{action} where action is accept/decline/confirm
 	mux.Handle("/api/requests/", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		if len(parts) >= 4 && (parts[3] == "accept" || parts[3] == "decline") {
+		if len(parts) >= 4 && (parts[3] == "accept" || parts[3] == "decline" || parts[3] == "confirm") {
 			requestHandler.HandleRequestAction(w, r)
 			return
 		}

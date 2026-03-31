@@ -30,6 +30,18 @@ function MentorCardSmall({ mentor }) {
 function RequestCard({ req, onAccept, onDecline }) {
   const [reason, setReason] = useState('');
   const [showDecline, setShowDecline] = useState(false);
+  const [showAccept, setShowAccept] = useState(false);
+  const [meetingType, setMeetingType] = useState('Google Meet');
+  const [meetingLink, setMeetingLink] = useState('');
+  const [slots, setSlots] = useState([{ date: '', time: '' }]);
+
+  const handleAddSlot = () => setSlots([...slots, { date: '', time: '' }]);
+  const handleSlotChange = (index, field, value) => {
+    const newSlots = [...slots];
+    newSlots[index][field] = value;
+    setSlots(newSlots);
+  };
+  const handleRemoveSlot = (index) => setSlots(slots.filter((_, i) => i !== index));
 
   return (
     <div className={`request-card rq-${req.status}`}>
@@ -41,6 +53,7 @@ function RequestCard({ req, onAccept, onDecline }) {
         <span className={`rq-status rq-status-${req.status}`}>
           {req.status === 'pending' && '⏳ Pending'}
           {req.status === 'accepted' && '✅ Accepted'}
+          {req.status === 'scheduled' && '📅 Scheduled'}
           {req.status === 'declined' && '❌ Declined'}
         </span>
       </div>
@@ -48,11 +61,66 @@ function RequestCard({ req, onAccept, onDecline }) {
       {req.goal && <p className="rq-goal"><strong>Goal:</strong> {req.goal}</p>}
       {req.message && <p className="rq-msg">"{req.message}"</p>}
 
+      {req.status === 'scheduled' && req.proposed_slots?.length > 0 && (
+        <div className="myr-scheduled" style={{ marginTop: '15px', padding: '15px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px' }}>
+          <h4 style={{ margin: '0 0 10px', color: '#059669' }}>Meeting Confirmed 🎉</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '5px', fontSize: '14px' }}>
+            <strong>Date:</strong> <span>{req.proposed_slots[0].date}</span>
+            <strong>Time:</strong> <span>{req.proposed_slots[0].time}</span>
+            <strong>Type:</strong> <span>{req.meeting_type}</span>
+            <strong>Link:</strong> <a href={req.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{req.meeting_link}</a>
+          </div>
+        </div>
+      )}
+
       {req.status === 'pending' && (
-        <div className="rq-actions">
-          <button className="btn btn-primary btn-small" onClick={() => onAccept(req.id)}>Accept</button>
-          {showDecline ? (
-            <div className="decline-flow">
+        <div className="rq-actions" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+          {!showDecline && !showAccept && (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn btn-primary btn-small" onClick={() => setShowAccept(true)}>Accept</button>
+              <button className="btn btn-secondary btn-small" onClick={() => setShowDecline(true)}>Decline</button>
+            </div>
+          )}
+          
+          {showAccept && (
+            <div className="accept-flow" style={{ width: '100%', marginTop: '10px', background: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 10px' }}>Set Available Slots</h4>
+              {slots.map((slot, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <input className="form-input" type="date" value={slot.date} onChange={e => handleSlotChange(idx, 'date', e.target.value)} required style={{ flex: 1, margin: 0 }} />
+                  <input className="form-input" type="text" placeholder="e.g. 2:00 PM - 3:00 PM" value={slot.time} onChange={e => handleSlotChange(idx, 'time', e.target.value)} required style={{ flex: 1, margin: 0 }} />
+                  {slots.length > 1 && <button type="button" onClick={() => handleRemoveSlot(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>❌</button>}
+                </div>
+              ))}
+              <button type="button" className="btn btn-secondary btn-small" onClick={handleAddSlot}>+ Add Slot</button>
+              
+              <div style={{ marginTop: '15px' }}>
+                <label style={{ fontWeight: '500', marginRight: '10px' }}>Meeting Type:</label>
+                <select className="form-input" value={meetingType} onChange={e => setMeetingType(e.target.value)} style={{ width: 'auto', display: 'inline-block', padding: '5px' }}>
+                  <option>Google Meet</option>
+                  <option>Zoom</option>
+                  <option>In-person</option>
+                </select>
+              </div>
+              
+              <div style={{ marginTop: '10px' }}>
+                <label style={{ fontWeight: '500' }}>Meeting Link / Location:</label>
+                <input className="form-input" type="text" placeholder="https://meet.google.com/xyz" value={meetingLink} onChange={e => setMeetingLink(e.target.value)} required style={{ width: '100%', marginTop: '5px' }} />
+              </div>
+
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                <button className="btn btn-primary btn-small" 
+                  disabled={!meetingLink || slots.some(s => !s.date || !s.time)}
+                  onClick={() => onAccept(req.id, { meeting_type: meetingType, meeting_link: meetingLink, proposed_slots: slots })}>
+                  Send Invitation
+                </button>
+                <button className="btn btn-secondary btn-small" onClick={() => setShowAccept(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {showDecline && (
+            <div className="decline-flow" style={{ marginTop: '10px' }}>
               <select className="decline-select" value={reason} onChange={(e) => setReason(e.target.value)}>
                 <option value="">Select reason...</option>
                 <option value="Busy">Busy</option>
@@ -63,9 +131,8 @@ function RequestCard({ req, onAccept, onDecline }) {
                 onClick={() => { onDecline(req.id, reason); setShowDecline(false); }}>
                 Confirm Decline
               </button>
+              <button className="btn btn-secondary btn-small" style={{ marginLeft: '10px' }} onClick={() => setShowDecline(false)}>Cancel</button>
             </div>
-          ) : (
-            <button className="btn btn-secondary btn-small" onClick={() => setShowDecline(true)}>Decline</button>
           )}
         </div>
       )}
@@ -92,10 +159,10 @@ export default function Dashboard() {
     }
   };
 
-  const handleAccept = async (id) => {
+  const handleAccept = async (id, payload) => {
     try {
-      await api.acceptRequest(id);
-      showToast('Request accepted! 🎉', 'success');
+      await api.acceptRequest(id, payload);
+      showToast('Invitation sent! 🎉', 'success');
       fetchDashboard();
     } catch (err) { showToast(err.message, 'error'); }
   };
@@ -162,7 +229,7 @@ export default function Dashboard() {
             <span className="stat-label">New Requests</span>
           </div>
           <div className="stat-card">
-            <span className="stat-val">{requests.filter(r => r.status === 'accepted').length}</span>
+            <span className="stat-val">{requests.filter(r => r.status === 'accepted' || r.status === 'scheduled').length}</span>
             <span className="stat-label">Accepted</span>
           </div>
           <div className="stat-card">
