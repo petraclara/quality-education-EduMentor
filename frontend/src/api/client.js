@@ -7,7 +7,17 @@ async function request(endpoint, options = {}) {
     ...options,
   };
   const response = await fetch(`${API_BASE}${endpoint}`, config);
-  const data = await response.json();
+  
+  let data = {};
+  const text = await response.text();
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('API returned non-JSON response:', text);
+    }
+  }
+
   if (!response.ok) throw new Error(data.message || 'Something went wrong');
   return data;
 }
