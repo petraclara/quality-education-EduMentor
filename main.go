@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/petraclara/quality-education-EduMentor/database"
@@ -13,7 +14,12 @@ import (
 )
 
 func main() {
-	db, err := database.New("edumentor.db")
+	dbUrl := os.Getenv("DATABASE_URL")
+	if dbUrl == "" {
+		dbUrl = "edumentor.db"
+	}
+
+	db, err := database.New(dbUrl)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
@@ -66,13 +72,43 @@ func main() {
 		http.NotFound(w, r)
 	})))
 
+	// Static Frontend Server
+	// Serve static files from the frontend/dist directory
+	distDir := "./frontend/dist"
+	fs := http.FileServer(http.Dir(distDir))
+	
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If it's explicitly an API route that wasn't matched above, let it 404 cleanly in API
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+		
+		// If requesting the root, serve index
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+			return
+		}
+		
+		// Serve static request if the file actually exists
+		path := filepath.Join(distDir, r.URL.Path)
+		if _, err := os.Stat(path); err == nil {
+			fs.ServeHTTP(w, r)
+			return
+		}
+		
+		// For React Router single-page apps, serve index.html for all other paths
+		http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+	}))
+
+	handler := middleware.CORS(mux)
+	
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
-	handler := middleware.CORS(mux)
-	fmt.Println("🎓 MentorConnect API server starting on port", port)
+	
+	fmt.Printf("🎓 MentorConnect API server starting on http://localhost:%s\n", port)
 	fmt.Println("   Press Ctrl+C to stop")
 	log.Fatal(http.ListenAndServe(":"+port, handler))
 }

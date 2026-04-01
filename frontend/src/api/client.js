@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = '/api';
 
 async function request(endpoint, options = {}) {
   const config = {
@@ -7,17 +7,7 @@ async function request(endpoint, options = {}) {
     ...options,
   };
   const response = await fetch(`${API_BASE}${endpoint}`, config);
-  
-  let data = {};
-  const text = await response.text();
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.warn('API returned non-JSON response:', text);
-    }
-  }
-
+  const data = await response.json();
   if (!response.ok) throw new Error(data.message || 'Something went wrong');
   return data;
 }

@@ -8,23 +8,32 @@ import (
 	"time"
 
 	"github.com/petraclara/quality-education-EduMentor/models"
+	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
-	conn *sql.DB
+	conn   *sql.DB
+	driver string
 }
 
 func New(dbPath string) (*DB, error) {
-	conn, err := sql.Open("sqlite", dbPath)
+	driver := "sqlite"
+	if strings.HasPrefix(dbPath, "postgres://") || strings.HasPrefix(dbPath, "postgresql://") {
+		driver = "postgres"
+	}
+
+	conn, err := sql.Open(driver, dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		return nil, fmt.Errorf("failed to set WAL mode: %w", err)
+	if driver == "sqlite" {
+		if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
+			return nil, fmt.Errorf("failed to set WAL mode: %w", err)
+		}
 	}
-	db := &DB{conn: conn}
+	db := &DB{conn: conn, driver: driver}
 	if err := db.migrate(); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -32,6 +41,39 @@ func New(dbPath string) (*DB, error) {
 }
 
 func (db *DB) Close() error { return db.conn.Close() }
+
+// formatQuery replaces ? with $1, $2, etc for postgres
+func (db *DB) formatQuery(q string) string {
+	if db.driver != "postgres" {
+		return q
+	}
+	count := 1
+	for {
+		idx := strings.Index(q, "?")
+		if idx == -1 {
+			break
+		}
+		q = q[:idx] + fmt.Sprintf("$%d", count) + q[idx+1:]
+		count++
+	}
+	return q
+}
+
+// executeInsert handles differences in sqlite vs postgres insertion and ID retrieval
+func (db *DB) executeInsert(query string, args ...interface{}) (int64, error) {
+	query = db.formatQuery(query)
+	if db.driver == "postgres" {
+		query += " RETURNING id"
+		var id int64
+		err := db.conn.QueryRow(query, args...).Scan(&id)
+		return id, err
+	}
+	result, err := db.conn.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
 
 func (db *DB) migrate() error {
 	queries := []string{
@@ -91,6 +133,10 @@ func (db *DB) migrate() error {
 		)`,
 	}
 	for _, q := range queries {
+		if db.driver == "postgres" {
+			q = strings.ReplaceAll(q, "INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+			q = strings.ReplaceAll(q, "DATETIME", "TIMESTAMP")
+		}
 		if _, err := db.conn.Exec(q); err != nil {
 			return fmt.Errorf("migration failed: %w\nQuery: %s", err, q)
 		}
@@ -197,20 +243,19 @@ func (db *DB) SeedDemoData() error {
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte("mentor123"), bcrypt.DefaultCost)
 	for _, m := range mentors {
-		result, err := db.conn.Exec(
+		id, err := db.executeInsert(
 			"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'mentor')",
 			m.Name, m.Email, string(hash),
 		)
 		if err != nil {
 			continue
 		}
-		id, _ := result.LastInsertId()
 		skillsJSON, _ := json.Marshal(m.Skills)
 		interestsJSON, _ := json.Marshal(m.Interests)
 		availJSON, _ := json.Marshal(m.Availability)
 		db.conn.Exec(
-			`INSERT INTO profiles (user_id, bio, skills, interests, level, availability, rating, rating_count) 
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			db.formatQuery(`INSERT INTO profiles (user_id, bio, skills, interests, level, availability, rating, rating_count) 
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
 			id, m.Bio, string(skillsJSON), string(interestsJSON), m.Level, string(availJSON), m.Rating, m.RatingCount,
 		)
 	}
@@ -221,19 +266,18 @@ func (db *DB) SeedDemoData() error {
 // ==================== User Operations ====================
 
 func (db *DB) CreateUser(name, email, passwordHash, role string) (*models.User, error) {
-	result, err := db.conn.Exec(
+	id, err := db.executeInsert(
 		"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
 		name, email, passwordHash, role,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
 			return nil, fmt.Errorf("email already registered")
 		}
 		return nil, err
 	}
-	id, _ := result.LastInsertId()
 	user := &models.User{ID: int(id), Name: name, Email: email, Role: role}
-	_, err = db.conn.Exec("INSERT INTO profiles (user_id) VALUES (?)", id)
+	_, err = db.conn.Exec(db.formatQuery("INSERT INTO profiles (user_id) VALUES (?)"), id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
@@ -243,7 +287,7 @@ func (db *DB) CreateUser(name, email, passwordHash, role string) (*models.User, 
 func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	user := &models.User{}
 	err := db.conn.QueryRow(
-		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = ?", email,
+		db.formatQuery("SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = ?"), email,
 	).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt)
 	if err != nil { return nil, err }
 	return user, nil
@@ -252,7 +296,7 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 func (db *DB) GetUserByID(id int) (*models.User, error) {
 	user := &models.User{}
 	err := db.conn.QueryRow(
-		"SELECT id, name, email, password_hash, role, created_at FROM users WHERE id = ?", id,
+		db.formatQuery("SELECT id, name, email, password_hash, role, created_at FROM users WHERE id = ?"), id,
 	).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt)
 	if err != nil { return nil, err }
 	return user, nil
@@ -264,8 +308,8 @@ func (db *DB) GetProfile(userID int) (*models.Profile, error) {
 	profile := &models.Profile{}
 	var skillsJSON, interestsJSON, availabilityJSON string
 	err := db.conn.QueryRow(
-		`SELECT id, user_id, bio, skills, interests, level, goal, availability, avatar_url, max_mentees, rating, rating_count 
-		 FROM profiles WHERE user_id = ?`, userID,
+		db.formatQuery(`SELECT id, user_id, bio, skills, interests, level, goal, availability, avatar_url, max_mentees, rating, rating_count 
+		 FROM profiles WHERE user_id = ?`), userID,
 	).Scan(&profile.ID, &profile.UserID, &profile.Bio, &skillsJSON, &interestsJSON,
 		&profile.Level, &profile.Goal, &availabilityJSON, &profile.AvatarURL,
 		&profile.MaxMentees, &profile.Rating, &profile.RatingCount)
@@ -285,8 +329,8 @@ func (db *DB) UpdateProfile(userID int, req models.ProfileUpdateRequest) error {
 	interestsJSON, _ := json.Marshal(req.Interests)
 	availabilityJSON, _ := json.Marshal(req.Availability)
 	_, err := db.conn.Exec(
-		`UPDATE profiles SET bio = ?, skills = ?, interests = ?, level = ?, goal = ?, 
-		 availability = ?, max_mentees = ? WHERE user_id = ?`,
+		db.formatQuery(`UPDATE profiles SET bio = ?, skills = ?, interests = ?, level = ?, goal = ?, 
+		 availability = ?, max_mentees = ? WHERE user_id = ?`),
 		req.Bio, string(skillsJSON), string(interestsJSON), req.Level, req.Goal,
 		string(availabilityJSON), req.MaxMentees, userID,
 	)
@@ -297,7 +341,7 @@ func (db *DB) UpdateProfile(userID int, req models.ProfileUpdateRequest) error {
 func (db *DB) HasPreferencesSet(userID int) (bool, error) {
 	var skills, interests string
 	err := db.conn.QueryRow(
-		"SELECT skills, interests FROM profiles WHERE user_id = ?", userID,
+		db.formatQuery("SELECT skills, interests FROM profiles WHERE user_id = ?"), userID,
 	).Scan(&skills, &interests)
 	if err != nil {
 		return false, err
@@ -337,10 +381,10 @@ func (db *DB) GetMentors() ([]models.MentorCard, error) {
 func (db *DB) GetMentorByID(id int) (*models.MentorCard, error) {
 	m := &models.MentorCard{}
 	var skillsJSON, interestsJSON, availJSON string
-	err := db.conn.QueryRow(`
+	err := db.conn.QueryRow(db.formatQuery(`
 		SELECT u.id, u.name, u.role, p.bio, p.skills, p.interests, p.level, p.availability, p.avatar_url, p.rating, p.rating_count
 		FROM users u JOIN profiles p ON u.id = p.user_id WHERE u.id = ?
-	`, id).Scan(&m.ID, &m.Name, &m.Role, &m.Bio, &skillsJSON, &interestsJSON, &m.Level, &availJSON, &m.AvatarURL, &m.Rating, &m.RatingCount)
+	`), id).Scan(&m.ID, &m.Name, &m.Role, &m.Bio, &skillsJSON, &interestsJSON, &m.Level, &availJSON, &m.AvatarURL, &m.Rating, &m.RatingCount)
 	if err != nil { return nil, err }
 	json.Unmarshal([]byte(skillsJSON), &m.Skills)
 	json.Unmarshal([]byte(interestsJSON), &m.Interests)
@@ -412,12 +456,11 @@ func jaccardSimilarity(a, b []string) float64 {
 // ==================== Mentorship Request Operations ====================
 
 func (db *DB) CreateMentorshipRequest(learnerID, mentorID int, helpWith, goal, message string) (*models.MentorshipRequest, error) {
-	result, err := db.conn.Exec(
+	id, err := db.executeInsert(
 		"INSERT INTO mentorship_requests (learner_id, mentor_id, help_with, goal, message) VALUES (?, ?, ?, ?, ?)",
 		learnerID, mentorID, helpWith, goal, message,
 	)
 	if err != nil { return nil, err }
-	id, _ := result.LastInsertId()
 	return &models.MentorshipRequest{
 		ID: int(id), LearnerID: learnerID, MentorID: mentorID,
 		HelpWith: helpWith, Goal: goal, Message: message, Status: "pending",
@@ -425,7 +468,7 @@ func (db *DB) CreateMentorshipRequest(learnerID, mentorID int, helpWith, goal, m
 }
 
 func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWithUser, error) {
-	rows, err := db.conn.Query(`
+	rows, err := db.conn.Query(db.formatQuery(`
 		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.meeting_type, r.meeting_link, r.proposed_slots, r.created_at,
 		       learner.name, learner.email, COALESCE(p.level, '')
 		FROM mentorship_requests r
@@ -433,7 +476,7 @@ func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWith
 		LEFT JOIN profiles p ON learner.id = p.user_id
 		WHERE r.mentor_id = ?
 		ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END, r.created_at DESC
-	`, mentorID)
+	`), mentorID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 
@@ -453,14 +496,14 @@ func (db *DB) GetRequestsForMentor(mentorID int) ([]models.MentorshipRequestWith
 }
 
 func (db *DB) GetRequestsByLearner(learnerID int) ([]models.MentorshipRequestWithUser, error) {
-	rows, err := db.conn.Query(`
+	rows, err := db.conn.Query(db.formatQuery(`
 		SELECT r.id, r.learner_id, r.mentor_id, r.help_with, r.goal, r.message, r.status, r.decline_reason, r.meeting_type, r.meeting_link, r.proposed_slots, r.created_at,
 		       '', '', '', mentor.name
 		FROM mentorship_requests r
 		JOIN users mentor ON r.mentor_id = mentor.id
 		WHERE r.learner_id = ?
 		ORDER BY r.created_at DESC
-	`, learnerID)
+	`), learnerID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 
@@ -483,7 +526,7 @@ func (db *DB) GetRequestByID(id int) (*models.MentorshipRequest, error) {
 	r := &models.MentorshipRequest{}
 	var slotsJSON string
 	err := db.conn.QueryRow(
-		"SELECT id, learner_id, mentor_id, help_with, goal, message, status, decline_reason, meeting_type, meeting_link, proposed_slots, created_at FROM mentorship_requests WHERE id = ?", id,
+		db.formatQuery("SELECT id, learner_id, mentor_id, help_with, goal, message, status, decline_reason, meeting_type, meeting_link, proposed_slots, created_at FROM mentorship_requests WHERE id = ?"), id,
 	).Scan(&r.ID, &r.LearnerID, &r.MentorID, &r.HelpWith, &r.Goal, &r.Message, &r.Status, &r.DeclineReason, &r.MeetingType, &r.MeetingLink, &slotsJSON, &r.CreatedAt)
 	if err != nil { return nil, err }
 	json.Unmarshal([]byte(slotsJSON), &r.ProposedSlots)
@@ -493,7 +536,7 @@ func (db *DB) GetRequestByID(id int) (*models.MentorshipRequest, error) {
 
 func (db *DB) AcceptRequest(id int, meetingType, meetingLink string, proposedSlots []models.ProposedSlot) error {
 	slotsJSON, _ := json.Marshal(proposedSlots)
-	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'accepted', meeting_type = ?, meeting_link = ?, proposed_slots = ? WHERE id = ?", meetingType, meetingLink, string(slotsJSON), id)
+	_, err := db.conn.Exec(db.formatQuery("UPDATE mentorship_requests SET status = 'accepted', meeting_type = ?, meeting_link = ?, proposed_slots = ? WHERE id = ?"), meetingType, meetingLink, string(slotsJSON), id)
 	return err
 }
 
@@ -505,7 +548,7 @@ func (db *DB) ConfirmRequestSlot(reqID int, date, timeStr string) error {
 	confirmedSlot := []models.ProposedSlot{{Date: date, Time: timeStr}}
 	slotsJSON, _ := json.Marshal(confirmedSlot)
 	
-	_, err = db.conn.Exec("UPDATE mentorship_requests SET status = 'scheduled', proposed_slots = ? WHERE id = ?", string(slotsJSON), reqID)
+	_, err = db.conn.Exec(db.formatQuery("UPDATE mentorship_requests SET status = 'scheduled', proposed_slots = ? WHERE id = ?"), string(slotsJSON), reqID)
 	if err != nil { return err }
 	
 	_, err = db.CreateBooking(req.MentorID, req.LearnerID, date, timeStr, "Mentorship session via "+req.MeetingType+": "+req.MeetingLink)
@@ -513,24 +556,23 @@ func (db *DB) ConfirmRequestSlot(reqID int, date, timeStr string) error {
 }
 
 func (db *DB) DeclineRequest(id int, reason string) error {
-	_, err := db.conn.Exec("UPDATE mentorship_requests SET status = 'declined', decline_reason = ? WHERE id = ?", reason, id)
+	_, err := db.conn.Exec(db.formatQuery("UPDATE mentorship_requests SET status = 'declined', decline_reason = ? WHERE id = ?"), reason, id)
 	return err
 }
 
 // ==================== Booking Operations ====================
 
 func (db *DB) CreateBooking(mentorID, menteeID int, date, timeSlot, note string) (*models.Booking, error) {
-	result, err := db.conn.Exec(
+	id, err := db.executeInsert(
 		"INSERT INTO bookings (mentor_id, mentee_id, date, time_slot, note) VALUES (?, ?, ?, ?, ?)",
 		mentorID, menteeID, date, timeSlot, note,
 	)
 	if err != nil { return nil, err }
-	id, _ := result.LastInsertId()
 	return &models.Booking{ID: int(id), MentorID: mentorID, MenteeID: menteeID, Date: date, TimeSlot: timeSlot, Status: "upcoming", Note: note}, nil
 }
 
 func (db *DB) GetBookingsByUser(userID int) ([]models.BookingWithUser, error) {
-	rows, err := db.conn.Query(`
+	rows, err := db.conn.Query(db.formatQuery(`
 		SELECT b.id, b.mentor_id, b.mentee_id, b.date, b.time_slot, b.status, b.note, b.created_at,
 		       mentor.name, mentee.name
 		FROM bookings b
@@ -538,7 +580,7 @@ func (db *DB) GetBookingsByUser(userID int) ([]models.BookingWithUser, error) {
 		JOIN users mentee ON b.mentee_id = mentee.id
 		WHERE b.mentor_id = ? OR b.mentee_id = ?
 		ORDER BY b.date ASC
-	`, userID, userID)
+	`), userID, userID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var bookings []models.BookingWithUser
@@ -553,7 +595,7 @@ func (db *DB) GetBookingsByUser(userID int) ([]models.BookingWithUser, error) {
 
 func (db *DB) GetBookingsForMentorOnDate(mentorID int, date string) ([]models.Booking, error) {
 	rows, err := db.conn.Query(
-		"SELECT id, mentor_id, mentee_id, date, time_slot, status, note, created_at FROM bookings WHERE mentor_id = ? AND date = ? AND status = 'upcoming'",
+		db.formatQuery("SELECT id, mentor_id, mentee_id, date, time_slot, status, note, created_at FROM bookings WHERE mentor_id = ? AND date = ? AND status = 'upcoming'"),
 		mentorID, date,
 	)
 	if err != nil { return nil, err }
@@ -571,23 +613,23 @@ func (db *DB) GetBookingsForMentorOnDate(mentorID int, date string) ([]models.Bo
 // ==================== Session Operations ====================
 
 func (db *DB) CreateSession(token string, userID int, expiresAt time.Time) error {
-	_, err := db.conn.Exec("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)", token, userID, expiresAt)
+	_, err := db.conn.Exec(db.formatQuery("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)"), token, userID, expiresAt)
 	return err
 }
 
 func (db *DB) GetSession(token string) (*models.Session, error) {
 	s := &models.Session{}
-	err := db.conn.QueryRow("SELECT token, user_id, expires_at FROM sessions WHERE token = ?", token).Scan(&s.Token, &s.UserID, &s.ExpiresAt)
+	err := db.conn.QueryRow(db.formatQuery("SELECT token, user_id, expires_at FROM sessions WHERE token = ?"), token).Scan(&s.Token, &s.UserID, &s.ExpiresAt)
 	if err != nil { return nil, err }
 	return s, nil
 }
 
 func (db *DB) DeleteSession(token string) error {
-	_, err := db.conn.Exec("DELETE FROM sessions WHERE token = ?", token)
+	_, err := db.conn.Exec(db.formatQuery("DELETE FROM sessions WHERE token = ?"), token)
 	return err
 }
 
 func (db *DB) CleanExpiredSessions() error {
-	_, err := db.conn.Exec("DELETE FROM sessions WHERE expires_at < ?", time.Now())
+	_, err := db.conn.Exec(db.formatQuery("DELETE FROM sessions WHERE expires_at < ?"), time.Now())
 	return err
 }
